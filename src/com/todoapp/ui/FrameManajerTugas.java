@@ -3,6 +3,7 @@ package com.todoapp.ui;
 import com.todoapp.model.Tugas;
 import com.todoapp.service.LayananTugas;
 
+import java.awt.Color;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -70,7 +71,10 @@ public class FrameManajerTugas extends JFrame {
 
         comboFilter = new JComboBox<>(new String[]{"Semua", "Selesai", "Belum", "Tinggi", "Sedang", "Rendah"});
         JButton tombolFilter = new JButton("Filter");
-
+        
+        tombolTambah.putClientProperty("JButton.buttonType", "roundRect");
+        tombolTambah.setBackground(new Color(52, 152, 219));
+        tombolTambah.setForeground(Color.WHITE);
         tombolTambah.addActionListener(e -> tampilkanDialogTugas(null));
         tombolEdit.addActionListener(e -> editTugasTerpilih());
         tombolHapus.addActionListener(e -> hapusTugasTerpilih());
@@ -86,6 +90,7 @@ public class FrameManajerTugas extends JFrame {
         panelAksi.add(new JLabel("Filter:"));
         panelAksi.add(comboFilter);
         panelAksi.add(tombolFilter);
+        panelAksi.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         add(panelAtas, BorderLayout.NORTH);
         add(new JScrollPane(tabel), BorderLayout.CENTER);
@@ -210,6 +215,7 @@ public class FrameManajerTugas extends JFrame {
         JComboBox<String> fieldPrioritas = new JComboBox<>(new String[]{"TINGGI", "SEDANG", "RENDAH"});
 
         if (tugas != null) {
+            fieldJudul.putClientProperty("JTextField.placeholderText", "Masukkan judul tugas...");
             fieldJudul.setText(tugas.getJudul());
             fieldDeskripsi.setText(tugas.getDeskripsi());
             fieldTenggat.setText(tugas.getTenggat().toString());
