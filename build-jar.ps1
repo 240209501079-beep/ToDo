@@ -1,6 +1,23 @@
 ﻿# Build JAR file for ToDo App
 Write-Host "Building JAR file..." -ForegroundColor Green
 
+$fileVersi = "app-version.properties"
+if (-not (Test-Path $fileVersi)) {
+    throw "File $fileVersi tidak ditemukan."
+}
+
+$barisVersi = Get-Content $fileVersi | Where-Object { $_ -match '^app\.version=' } | Select-Object -First 1
+if (-not $barisVersi) {
+    throw "Kunci app.version tidak ditemukan di $fileVersi."
+}
+
+$versiAplikasi = ($barisVersi -split '=', 2)[1].Trim()
+if (-not $versiAplikasi) {
+    throw "Nilai app.version kosong di $fileVersi."
+}
+
+Write-Host "App Version: $versiAplikasi" -ForegroundColor Yellow
+
 # 1. Bersihkan dan buat direktori bin
 if (Test-Path bin) { Remove-Item -Recurse -Force bin }
 New-Item -ItemType Directory -Path bin | Out-Null
@@ -20,9 +37,19 @@ if ($LASTEXITCODE -eq 0) {
     }
     Pop-Location
 
-    # 4. Buat JAR
+    # 4. Buat manifest dengan versi aplikasi
+    $manifestSementara = "manifest-temp.mf"
+    @"
+Manifest-Version: 1.0
+Main-Class: com.todoapp.Main
+Implementation-Version: $versiAplikasi
+
+"@ | Set-Content -Path $manifestSementara -Encoding Ascii
+
+    # 5. Buat JAR
     Write-Host "Creating JAR file..."
-    jar cfe ToDoApp.jar com.todoapp.Main -C bin .
+    jar cfm ToDoApp.jar $manifestSementara -C bin .
+    Remove-Item $manifestSementara -ErrorAction SilentlyContinue
     
     if (Test-Path ToDoApp.jar) {
         Write-Host "✓ JAR created: ToDoApp.jar" -ForegroundColor Green
