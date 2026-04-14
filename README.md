@@ -71,7 +71,13 @@ java -jar ToDoApp.jar
 5. Klik Build wrapper
 
 Output:
-- `ToDoApp.exe`
+- `ToDoTask.exe`
+
+Metadata EXE yang diisi otomatis dari script:
+- Product Name: `ToDoTask`
+- Company Name: `Kelompok 7`
+- File Description: `Aplikasi ToDo Desktop`
+- Version: dari `app-version.properties`
 
 Catatan:
 - EXE Launch4j tetap membutuhkan Java Runtime minimal 17 di komputer target, kecuali bundling JRE.

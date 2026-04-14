@@ -113,7 +113,7 @@ if (-not $versiAplikasi) {
 
 $versiWindows = Ubah-KeVersiWindows -Versi $versiAplikasi
 $namaProduk = "ToDoTask"
-$namaPerusahaan = "ToDo Team"
+$namaPerusahaan = "Kelompok 7"
 $deskripsi = "Aplikasi ToDo Desktop"
 $ikonAplikasi = ""
 $pathJar = Join-Path $akar "ToDoApp.jar"

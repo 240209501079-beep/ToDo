@@ -69,6 +69,10 @@ powershell -ExecutionPolicy Bypass -File siapkan-launch4j.ps1
 Output script:
 1. launch4j-config.xml
 2. Metadata versi EXE terisi otomatis dari app-version.properties
+3. Metadata produk otomatis:
+	1. Product Name: ToDoTask
+	2. Company Name: Kelompok 7
+	3. File Description: Aplikasi ToDo Desktop
 
 Contoh mapping versi:
 1. app.version=1.0.0
@@ -79,17 +83,18 @@ Contoh mapping versi:
 1. Buka launch4j.exe
 2. Open config: launch4j-config.xml
 3. Cek field utama:
-	1. jar: ToDoApp.jar
-	2. outfile: ToDoApp.exe
-	3. minVersion: 17
+	1. jar: D:\VisualSC\Java\ToDo\ToDo\ToDoApp.jar
+	2. outfile: D:\VisualSC\Java\ToDo\ToDo\ToDoTask.exe
+	3. icon: D:\VisualSC\Java\ToDo\ToDo\icon.ico
+	4. minVersion: 17
 4. Klik Build wrapper
 
-Hasilnya: ToDoApp.exe di folder project.
+Hasilnya: ToDoTask.exe di folder project.
 
 ## 6. Test EXE
 
 ```powershell
-.\ToDoApp.exe
+.\ToDoTask.exe
 ```
 
 ## 7. Alur Rilis Berikutnya
