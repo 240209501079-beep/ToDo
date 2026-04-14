@@ -2,8 +2,8 @@
   <dontWrapJar>false</dontWrapJar>
   <headerType>gui</headerType>
   <jar>ToDoApp.jar</jar>
-  <outfile>ToDoApp.exe</outfile>
-  <errTitle>ToDoApp</errTitle>
+  <outfile>ToDoTask.exe</outfile>
+  <errTitle>ToDoTask/errTitle>
   <chdir>.</chdir>
   <priority>normal</priority>
   <downloadUrl>https://adoptium.net/</downloadUrl>
@@ -23,9 +23,9 @@
     <copyright>2026</copyright>
     <productVersion>1.0.0.0</productVersion>
     <txtProductVersion>1.0.0</txtProductVersion>
-    <productName>ToDoApp</productName>
-    <companyName>ToDo Team</companyName>
-    <internalName>ToDoApp</internalName>
-    <originalFilename>ToDoApp.exe</originalFilename>
+    <productName>ToDoTask</productName>
+    <companyName>Kelompok 7</companyName>
+    <internalName>ToDoTask</internalName>
+    <originalFilename>ToDoTask.exe</originalFilename>
   </versionInfo>
 </launch4jConfig>
