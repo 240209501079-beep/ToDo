@@ -25,6 +25,45 @@ function Ubah-KeVersiWindows {
     return ($angka -join '.')
 }
 
+function Buat-IconDariPng {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PngPath,
+        [Parameter(Mandatory = $true)]
+        [string]$IcoPath
+    )
+
+    Add-Type -AssemblyName System.Drawing
+    Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class NativeIcon {
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern bool DestroyIcon(IntPtr handle);
+}
+"@
+
+    $bitmapAsli = [System.Drawing.Bitmap]::new($PngPath)
+    $ukuran = [Math]::Min($bitmapAsli.Width, $bitmapAsli.Height)
+    $bitmap = [System.Drawing.Bitmap]::new($bitmapAsli, [System.Drawing.Size]::new($ukuran, $ukuran))
+
+    $hIcon = $bitmap.GetHicon()
+    $icon = [System.Drawing.Icon]::FromHandle($hIcon)
+    try {
+        $stream = [System.IO.File]::Open($IcoPath, [System.IO.FileMode]::Create)
+        try {
+            $icon.Save($stream)
+        } finally {
+            $stream.Dispose()
+        }
+    } finally {
+        $icon.Dispose()
+        [NativeIcon]::DestroyIcon($hIcon) | Out-Null
+        $bitmap.Dispose()
+        $bitmapAsli.Dispose()
+    }
+}
+
 $akar = Get-Location
 $fileVersi = Join-Path $akar "app-version.properties"
 if (-not (Test-Path $fileVersi)) {
@@ -45,6 +84,14 @@ $versiWindows = Ubah-KeVersiWindows -Versi $versiAplikasi
 $namaProduk = "ToDoApp"
 $namaPerusahaan = "ToDo Team"
 $deskripsi = "Aplikasi ToDo Desktop"
+$pathPng = Join-Path $akar "icon.png"
+$pathIco = Join-Path $akar "icon.ico"
+$nilaiIconXml = ""
+
+if (Test-Path $pathPng) {
+    Buat-IconDariPng -PngPath $pathPng -IcoPath $pathIco
+    $nilaiIconXml = "icon.ico"
+}
 
 $xml = @"
 <launch4jConfig>
@@ -59,7 +106,7 @@ $xml = @"
   <stayAlive>false</stayAlive>
   <restartOnCrash>false</restartOnCrash>
   <manifest></manifest>
-  <icon></icon>
+    <icon>$nilaiIconXml</icon>
   <jre>
     <path></path>
     <minVersion>17</minVersion>
@@ -86,3 +133,8 @@ $xml | Set-Content -Path $keluaran -Encoding Ascii
 Write-Host "Config Launch4j berhasil dibuat:" -ForegroundColor Green
 Write-Host $keluaran -ForegroundColor Cyan
 Write-Host "Versi aplikasi: $versiAplikasi" -ForegroundColor Yellow
+if ($nilaiIconXml) {
+    Write-Host "Icon Launch4j: $nilaiIconXml (dibuat dari icon.png)" -ForegroundColor Yellow
+} else {
+    Write-Host "Icon Launch4j: tidak ada (icon.png tidak ditemukan)" -ForegroundColor DarkYellow
+}

@@ -10,7 +10,7 @@
   <stayAlive>false</stayAlive>
   <restartOnCrash>false</restartOnCrash>
   <manifest></manifest>
-  <icon></icon>
+    <icon>icon.ico</icon>
   <jre>
     <path></path>
     <minVersion>17</minVersion>
