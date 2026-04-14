@@ -20,7 +20,7 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "✓ JAR created: ToDoApp.jar" -ForegroundColor Green
         Write-Host "" 
         Write-Host "Download Launch4j: https://sourceforge.net/projects/launch4j/" -ForegroundColor Cyan
+    } else {
+        Write-Host "✗ Compilation failed!" -ForegroundColor Red
     }
-} else {
-    Write-Host "✗ Compilation failed!" -ForegroundColor Red
 }
