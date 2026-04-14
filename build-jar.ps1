@@ -10,7 +10,7 @@ Write-Host "Compiling Java sources..."
 javac -d bin -cp "lib/*" -sourcepath src src/com/todoapp/Main.java
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "âœ“ Compilation successful!" -ForegroundColor Green
+    Write-Host "Compilation successful!" -ForegroundColor Green
     
     # 3. Ekstrak library ke bin agar JAR bisa jalan mandiri (Fat JAR)
     Write-Host "Extracting libraries..."
@@ -25,9 +25,10 @@ if ($LASTEXITCODE -eq 0) {
     jar cfe ToDoApp.jar com.todoapp.Main -C bin .
     
     if (Test-Path ToDoApp.jar) {
-        Write-Host "âœ“ JAR created: ToDoApp.jar" -ForegroundColor Green
+        Write-Host "✓ JAR created: ToDoApp.jar" -ForegroundColor Green
         Write-Host ""
         Write-Host "Sekarang kamu bisa jalankan dengan: java -jar ToDoApp.jar" -ForegroundColor Cyan
-    } else {
-    Write-Host "âœ— Compilation failed!" -ForegroundColor Red
+    } 
+} else {
+        Write-Host "✗ Compilation failed!" -ForegroundColor Red
 }
