@@ -1,16 +1,16 @@
 <launch4jConfig>
   <dontWrapJar>false</dontWrapJar>
   <headerType>gui</headerType>
-  <jar>ToDoApp.jar</jar>
-  <outfile>ToDoTask.exe</outfile>
-  <errTitle>ToDoTask/errTitle>
+    <jar>D:\VisualSC\Java\ToDo\ToDo\ToDoApp.jar</jar>
+        <outfile>D:\VisualSC\Java\ToDo\ToDo\ToDoTask.exe</outfile>
+  <errTitle>ToDoTask</errTitle>
   <chdir>.</chdir>
   <priority>normal</priority>
   <downloadUrl>https://adoptium.net/</downloadUrl>
   <stayAlive>false</stayAlive>
   <restartOnCrash>false</restartOnCrash>
   <manifest></manifest>
-    <icon>icon.ico</icon>
+    <icon>D:\VisualSC\Java\ToDo\ToDo\icon.ico</icon>
   <jre>
     <path></path>
     <minVersion>17</minVersion>
@@ -24,8 +24,8 @@
     <productVersion>1.0.0.0</productVersion>
     <txtProductVersion>1.0.0</txtProductVersion>
     <productName>ToDoTask</productName>
-    <companyName>Kelompok 7</companyName>
+    <companyName>ToDo Team</companyName>
     <internalName>ToDoTask</internalName>
-    <originalFilename>ToDoTask.exe</originalFilename>
+                <originalFilename>ToDoTask.exe</originalFilename>
   </versionInfo>
 </launch4jConfig>

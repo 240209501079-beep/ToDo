@@ -1,6 +1,8 @@
 # Menyiapkan config Launch4j dari versi aplikasi yang tersentral
 $ErrorActionPreference = "Stop"
 
+Add-Type -AssemblyName System.Drawing
+
 function Ubah-KeVersiWindows {
     param(
         [Parameter(Mandatory = $true)]
@@ -28,39 +30,68 @@ function Ubah-KeVersiWindows {
 function Buat-IconDariPng {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$PngPath,
+        [string]$PathPng,
         [Parameter(Mandatory = $true)]
-        [string]$IcoPath
+        [string]$PathIco
     )
 
-    Add-Type -AssemblyName System.Drawing
-    Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public static class NativeIcon {
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    public static extern bool DestroyIcon(IntPtr handle);
-}
-"@
+    $lebarTarget = 256
+    $tinggiTarget = 256
 
-    $bitmapAsli = [System.Drawing.Bitmap]::new($PngPath)
-    $ukuran = [Math]::Min($bitmapAsli.Width, $bitmapAsli.Height)
-    $bitmap = [System.Drawing.Bitmap]::new($bitmapAsli, [System.Drawing.Size]::new($ukuran, $ukuran))
-
-    $hIcon = $bitmap.GetHicon()
-    $icon = [System.Drawing.Icon]::FromHandle($hIcon)
+    $gambarAsli = [System.Drawing.Image]::FromFile($PathPng)
     try {
-        $stream = [System.IO.File]::Open($IcoPath, [System.IO.FileMode]::Create)
+        $bitmapTarget = New-Object System.Drawing.Bitmap($lebarTarget, $tinggiTarget)
         try {
-            $icon.Save($stream)
+            $grafik = [System.Drawing.Graphics]::FromImage($bitmapTarget)
+            try {
+                $grafik.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+                $grafik.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+                $grafik.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+                $grafik.DrawImage($gambarAsli, 0, 0, $lebarTarget, $tinggiTarget)
+            } finally {
+                $grafik.Dispose()
+            }
+
+            $streamPng = New-Object System.IO.MemoryStream
+            try {
+                $bitmapTarget.Save($streamPng, [System.Drawing.Imaging.ImageFormat]::Png)
+                $bytesPng = $streamPng.ToArray()
+
+                $streamIco = New-Object System.IO.FileStream($PathIco, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+                try {
+                    $writer = New-Object System.IO.BinaryWriter($streamIco)
+                    try {
+                        # ICONDIR
+                        $writer.Write([UInt16]0)
+                        $writer.Write([UInt16]1)
+                        $writer.Write([UInt16]1)
+
+                        # ICONDIRENTRY
+                        $writer.Write([Byte]0) # 0 berarti 256 px
+                        $writer.Write([Byte]0) # 0 berarti 256 px
+                        $writer.Write([Byte]0)
+                        $writer.Write([Byte]0)
+                        $writer.Write([UInt16]1)
+                        $writer.Write([UInt16]32)
+                        $writer.Write([UInt32]$bytesPng.Length)
+                        $writer.Write([UInt32]22)
+
+                        # Data gambar PNG
+                        $writer.Write($bytesPng)
+                    } finally {
+                        $writer.Dispose()
+                    }
+                } finally {
+                    $streamIco.Dispose()
+                }
+            } finally {
+                $streamPng.Dispose()
+            }
         } finally {
-            $stream.Dispose()
+            $bitmapTarget.Dispose()
         }
     } finally {
-        $icon.Dispose()
-        [NativeIcon]::DestroyIcon($hIcon) | Out-Null
-        $bitmap.Dispose()
-        $bitmapAsli.Dispose()
+        $gambarAsli.Dispose()
     }
 }
 
@@ -81,24 +112,29 @@ if (-not $versiAplikasi) {
 }
 
 $versiWindows = Ubah-KeVersiWindows -Versi $versiAplikasi
-$namaProduk = "ToDoApp"
+$namaProduk = "ToDoTask"
 $namaPerusahaan = "ToDo Team"
 $deskripsi = "Aplikasi ToDo Desktop"
-$pathPng = Join-Path $akar "icon.png"
-$pathIco = Join-Path $akar "icon.ico"
-$nilaiIconXml = ""
+$ikonAplikasi = ""
+$pathJar = Join-Path $akar "ToDoApp.jar"
+$pathExe = Join-Path $akar "ToDoTask.exe"
 
-if (Test-Path $pathPng) {
-    Buat-IconDariPng -PngPath $pathPng -IcoPath $pathIco
-    $nilaiIconXml = "icon.ico"
+$pathIco = Join-Path $akar "icon.ico"
+$pathPng = Join-Path $akar "icon.png"
+
+if (Test-Path $pathIco) {
+    $ikonAplikasi = $pathIco
+} elseif (Test-Path $pathPng) {
+    Buat-IconDariPng -PathPng $pathPng -PathIco $pathIco
+    $ikonAplikasi = $pathIco
 }
 
 $xml = @"
 <launch4jConfig>
   <dontWrapJar>false</dontWrapJar>
   <headerType>gui</headerType>
-  <jar>ToDoApp.jar</jar>
-  <outfile>ToDoApp.exe</outfile>
+    <jar>$pathJar</jar>
+        <outfile>$pathExe</outfile>
   <errTitle>$namaProduk</errTitle>
   <chdir>.</chdir>
   <priority>normal</priority>
@@ -106,7 +142,7 @@ $xml = @"
   <stayAlive>false</stayAlive>
   <restartOnCrash>false</restartOnCrash>
   <manifest></manifest>
-    <icon>$nilaiIconXml</icon>
+    <icon>$ikonAplikasi</icon>
   <jre>
     <path></path>
     <minVersion>17</minVersion>
@@ -122,7 +158,7 @@ $xml = @"
     <productName>$namaProduk</productName>
     <companyName>$namaPerusahaan</companyName>
     <internalName>$namaProduk</internalName>
-    <originalFilename>ToDoApp.exe</originalFilename>
+                <originalFilename>ToDoTask.exe</originalFilename>
   </versionInfo>
 </launch4jConfig>
 "@
@@ -133,8 +169,3 @@ $xml | Set-Content -Path $keluaran -Encoding Ascii
 Write-Host "Config Launch4j berhasil dibuat:" -ForegroundColor Green
 Write-Host $keluaran -ForegroundColor Cyan
 Write-Host "Versi aplikasi: $versiAplikasi" -ForegroundColor Yellow
-if ($nilaiIconXml) {
-    Write-Host "Icon Launch4j: $nilaiIconXml (dibuat dari icon.png)" -ForegroundColor Yellow
-} else {
-    Write-Host "Icon Launch4j: tidak ada (icon.png tidak ditemukan)" -ForegroundColor DarkYellow
-}
