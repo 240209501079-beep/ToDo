@@ -3,6 +3,7 @@ package com.todoapp.ui;
 import com.todoapp.model.Tugas;
 import com.todoapp.service.LayananTugas;
 
+import javax.swing.JSplitPane;
 import java.awt.Color;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -37,7 +38,7 @@ public class FrameManajerTugas extends JFrame {
     public FrameManajerTugas(LayananTugas layananTugas) {
         this.layananTugas = layananTugas;
 
-        setTitle("To-Do App GUI");
+        setTitle("To-Do App");
         setSize(920, 560);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -52,7 +53,8 @@ public class FrameManajerTugas extends JFrame {
         panelAtas.setBorder(BorderFactory.createTitledBorder("Pengingat"));
         panelAtas.add(new JScrollPane(areaPengingat), BorderLayout.CENTER);
 
-        modelTabel = new DefaultTableModel(new String[]{"ID", "Judul", "Deskripsi", "Tenggat", "Prioritas", "Status"}, 0) {
+        modelTabel = new DefaultTableModel(
+                new String[] { "ID", "Judul", "Deskripsi", "Tenggat", "Prioritas", "Status" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -69,9 +71,9 @@ public class FrameManajerTugas extends JFrame {
         JButton tombolUbahStatus = new JButton("Ubah Status");
         JButton tombolMuatUlang = new JButton("Muat Ulang");
 
-        comboFilter = new JComboBox<>(new String[]{"Semua", "Selesai", "Belum", "Tinggi", "Sedang", "Rendah"});
+        comboFilter = new JComboBox<>(new String[] { "Semua", "Selesai", "Belum", "Tinggi", "Sedang", "Rendah" });
         JButton tombolFilter = new JButton("Filter");
-        
+
         tombolTambah.putClientProperty("JButton.buttonType", "roundRect");
         tombolTambah.setBackground(new Color(52, 152, 219));
         tombolTambah.setForeground(Color.WHITE);
@@ -92,9 +94,18 @@ public class FrameManajerTugas extends JFrame {
         panelAksi.add(tombolFilter);
         panelAksi.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        add(panelAtas, BorderLayout.NORTH);
-        add(new JScrollPane(tabel), BorderLayout.CENTER);
-        add(panelAksi, BorderLayout.SOUTH);
+        // Panel kanan: pengingat + tabel tugas
+        JPanel panelKanan = new JPanel(new BorderLayout(10, 10));
+        panelKanan.add(panelAtas, BorderLayout.NORTH);
+        panelKanan.add(new JScrollPane(tabel), BorderLayout.CENTER);
+
+        // Split horizontal: kiri = aksi/filter, kanan = konten utama
+        JSplitPane splitUtama = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelAksi, panelKanan);
+        splitUtama.setDividerLocation(260); // lebar panel kiri
+        splitUtama.setResizeWeight(0.0); // panel kiri tetap, kanan yang fleksibel
+        splitUtama.setOneTouchExpandable(true);
+
+        add(splitUtama, BorderLayout.CENTER);
 
         muatTugas(layananTugas.ambilSemuaTugas());
     }
@@ -102,13 +113,13 @@ public class FrameManajerTugas extends JFrame {
     private void muatTugas(List<Tugas> daftarTugas) {
         modelTabel.setRowCount(0);
         for (Tugas tugas : daftarTugas) {
-            modelTabel.addRow(new Object[]{
-                tugas.getId(),
-                tugas.getJudul(),
-                tugas.getDeskripsi(),
-                tugas.getTenggat(),
-                tugas.getPrioritas(),
-                tugas.isSelesai() ? "Selesai" : "Belum"
+            modelTabel.addRow(new Object[] {
+                    tugas.getId(),
+                    tugas.getJudul(),
+                    tugas.getDeskripsi(),
+                    tugas.getTenggat(),
+                    tugas.getPrioritas(),
+                    tugas.isSelesai() ? "Selesai" : "Belum"
             });
         }
         perbaruiPengingat();
@@ -212,7 +223,7 @@ public class FrameManajerTugas extends JFrame {
         JTextField fieldJudul = new JTextField();
         JTextField fieldDeskripsi = new JTextField();
         JTextField fieldTenggat = new JTextField();
-        JComboBox<String> fieldPrioritas = new JComboBox<>(new String[]{"TINGGI", "SEDANG", "RENDAH"});
+        JComboBox<String> fieldPrioritas = new JComboBox<>(new String[] { "TINGGI", "SEDANG", "RENDAH" });
 
         if (tugas != null) {
             fieldJudul.putClientProperty("JTextField.placeholderText", "Masukkan judul tugas...");
