@@ -29,20 +29,33 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 
 public class FrameManajerTugas extends JFrame {
+    private static final Color WARNA_PUTIH = Color.WHITE;
+    private static final Color WARNA_BIRU = new Color(38, 128, 235);
+    private static final Color WARNA_BIRU_MUDA = new Color(233, 244, 255);
+
     private final LayananTugas layananTugas;
     private final DefaultTableModel modelTabel;
     private final JTable tabel;
     private final JTextArea areaPengingat;
     private final JComboBox<String> comboFilter;
+    // Komponen panel detail (kolom kanan)
+    private final JLabel labelDetailJudul;
+    private final JLabel labelDetailTenggat;
+    private final JLabel labelDetailPrioritas;
+    private final JLabel labelDetailStatus;
+    private final JTextArea areaDetailDeskripsi;
 
     public FrameManajerTugas(LayananTugas layananTugas) {
         this.layananTugas = layananTugas;
 
         setTitle("To-Do App");
-        setSize(920, 560);
+        setSize(1080, 720);
+        setMinimumSize(new Dimension(1080, 720));
+        setResizable(false); // kunci ukuran window supaya isi tidak saling numpuk
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
+        getContentPane().setBackground(WARNA_PUTIH);
 
         areaPengingat = new JTextArea(3, 30);
         areaPengingat.setEditable(false);
@@ -52,6 +65,7 @@ public class FrameManajerTugas extends JFrame {
         JPanel panelAtas = new JPanel(new BorderLayout());
         panelAtas.setBorder(BorderFactory.createTitledBorder("Pengingat"));
         panelAtas.add(new JScrollPane(areaPengingat), BorderLayout.CENTER);
+        panelAtas.setBackground(WARNA_PUTIH);
 
         modelTabel = new DefaultTableModel(
                 new String[] { "ID", "Judul", "Deskripsi", "Tenggat", "Prioritas", "Status" }, 0) {
@@ -63,8 +77,13 @@ public class FrameManajerTugas extends JFrame {
 
         tabel = new JTable(modelTabel);
         tabel.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tabel.setRowHeight(28);
+        tabel.setFillsViewportHeight(true);
+        tabel.setBackground(WARNA_PUTIH);
+        tabel.setSelectionBackground(WARNA_BIRU_MUDA);
+        tabel.setSelectionForeground(Color.BLACK);
 
-        JPanel panelAksi = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel panelAksi = new JPanel(new BorderLayout(0, 14));
         JButton tombolTambah = new JButton("Tambah");
         JButton tombolEdit = new JButton("Edit");
         JButton tombolHapus = new JButton("Hapus");
@@ -75,8 +94,18 @@ public class FrameManajerTugas extends JFrame {
         JButton tombolFilter = new JButton("Filter");
 
         tombolTambah.putClientProperty("JButton.buttonType", "roundRect");
-        tombolTambah.setBackground(new Color(52, 152, 219));
+        tombolTambah.setBackground(WARNA_BIRU);
         tombolTambah.setForeground(Color.WHITE);
+        tombolEdit.setBackground(WARNA_PUTIH);
+        tombolEdit.setForeground(new Color(50, 50, 50));
+        tombolHapus.setBackground(WARNA_PUTIH);
+        tombolHapus.setForeground(new Color(50, 50, 50));
+        tombolUbahStatus.setBackground(WARNA_PUTIH);
+        tombolUbahStatus.setForeground(new Color(50, 50, 50));
+        tombolMuatUlang.setBackground(WARNA_PUTIH);
+        tombolMuatUlang.setForeground(new Color(50, 50, 50));
+        tombolFilter.setBackground(WARNA_BIRU);
+        tombolFilter.setForeground(Color.WHITE);
         tombolTambah.addActionListener(e -> tampilkanDialogTugas(null));
         tombolEdit.addActionListener(e -> editTugasTerpilih());
         tombolHapus.addActionListener(e -> hapusTugasTerpilih());
@@ -84,28 +113,110 @@ public class FrameManajerTugas extends JFrame {
         tombolMuatUlang.addActionListener(e -> muatTugas(layananTugas.ambilSemuaTugas()));
         tombolFilter.addActionListener(e -> terapkanFilter());
 
-        panelAksi.add(tombolTambah);
-        panelAksi.add(tombolEdit);
-        panelAksi.add(tombolHapus);
-        panelAksi.add(tombolUbahStatus);
-        panelAksi.add(tombolMuatUlang);
-        panelAksi.add(new JLabel("Filter:"));
-        panelAksi.add(comboFilter);
-        panelAksi.add(tombolFilter);
         panelAksi.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        panelAksi.setPreferredSize(new Dimension(360, 0)); // panel kiri dibuat sepertiga lebar window
+        panelAksi.setBackground(WARNA_PUTIH);
 
-        // Panel kanan: pengingat + tabel tugas
-        JPanel panelKanan = new JPanel(new BorderLayout(10, 10));
-        panelKanan.add(panelAtas, BorderLayout.NORTH);
-        panelKanan.add(new JScrollPane(tabel), BorderLayout.CENTER);
+        // Area atas: tombol utama ditumpuk vertikal
+        JPanel panelTombolUtama = new JPanel();
+        panelTombolUtama.setLayout(new BoxLayout(panelTombolUtama, BoxLayout.Y_AXIS));
+        panelTombolUtama.setBackground(WARNA_PUTIH);
 
-        // Split horizontal: kiri = aksi/filter, kanan = konten utama
-        JSplitPane splitUtama = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelAksi, panelKanan);
-        splitUtama.setDividerLocation(260); // lebar panel kiri
-        splitUtama.setResizeWeight(0.0); // panel kiri tetap, kanan yang fleksibel
-        splitUtama.setOneTouchExpandable(true);
+        // Samakan ukuran agar tiap tombol terasa seperti menu sidebar
+        Dimension ukuranTombol = new Dimension(Integer.MAX_VALUE, 34);
+        tombolTambah.setMaximumSize(ukuranTombol);
+        tombolEdit.setMaximumSize(ukuranTombol);
+        tombolHapus.setMaximumSize(ukuranTombol);
+        tombolUbahStatus.setMaximumSize(ukuranTombol);
+        tombolMuatUlang.setMaximumSize(ukuranTombol);
+
+        panelTombolUtama.add(tombolTambah);
+        panelTombolUtama.add(tombolEdit);
+        panelTombolUtama.add(tombolHapus);
+        panelTombolUtama.add(tombolUbahStatus);
+        panelTombolUtama.add(tombolMuatUlang);
+
+        // Area bawah: filter terpisah supaya lebih rapi
+        JPanel panelFilter = new JPanel();
+        panelFilter.setLayout(new BoxLayout(panelFilter, BoxLayout.Y_AXIS));
+        panelFilter.setBackground(WARNA_PUTIH);
+
+        JLabel labelFilter = new JLabel("Filter");
+        labelFilter.setForeground(new Color(50, 50, 50));
+        comboFilter.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        comboFilter.setForeground(new Color(50, 50, 50));
+        tombolFilter.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+
+        panelFilter.add(labelFilter);
+        panelFilter.add(comboFilter);
+        panelFilter.add(tombolFilter);
+
+        panelAksi.add(panelTombolUtama, BorderLayout.NORTH);
+        panelAksi.add(panelFilter, BorderLayout.SOUTH);
+
+        // Panel tengah: pengingat + tabel (daftar tugas)
+        JPanel panelDaftar = new JPanel(new BorderLayout(8, 8));
+        panelDaftar.add(panelAtas, BorderLayout.NORTH);
+        panelDaftar.add(new JScrollPane(tabel), BorderLayout.CENTER);
+        panelDaftar.setBackground(WARNA_PUTIH);
+
+        // Panel kanan: detail tugas terpilih (meniru panel detail Microsoft To Do)
+        JPanel panelDetail = new JPanel(new BorderLayout(10, 10));
+        panelDetail.setBorder(BorderFactory.createTitledBorder("Detail Tugas"));
+        panelDetail.setBackground(WARNA_PUTIH);
+
+        JPanel panelInfoDetail = new JPanel();
+        panelInfoDetail.setLayout(new BoxLayout(panelInfoDetail, BoxLayout.Y_AXIS));
+        panelInfoDetail.setBackground(WARNA_PUTIH);
+
+        labelDetailJudul = new JLabel("Judul: -");
+        labelDetailTenggat = new JLabel("Tenggat: -");
+        labelDetailPrioritas = new JLabel("Prioritas: -");
+        labelDetailStatus = new JLabel("Status: -");
+        labelDetailJudul.setForeground(new Color(50, 50, 50));
+        labelDetailTenggat.setForeground(new Color(50, 50, 50));
+        labelDetailPrioritas.setForeground(new Color(50, 50, 50));
+        labelDetailStatus.setForeground(new Color(50, 50, 50));
+
+        panelInfoDetail.add(labelDetailJudul);
+        panelInfoDetail.add(labelDetailTenggat);
+        panelInfoDetail.add(labelDetailPrioritas);
+        panelInfoDetail.add(labelDetailStatus);
+
+        areaDetailDeskripsi = new JTextArea(8, 20);
+        areaDetailDeskripsi.setEditable(false);
+        areaDetailDeskripsi.setLineWrap(true);
+        areaDetailDeskripsi.setWrapStyleWord(true);
+        areaDetailDeskripsi.setBorder(BorderFactory.createTitledBorder("Catatan / Deskripsi"));
+        areaDetailDeskripsi.setBackground(WARNA_PUTIH);
+
+        panelDetail.add(panelInfoDetail, BorderLayout.NORTH);
+        panelDetail.add(new JScrollPane(areaDetailDeskripsi), BorderLayout.CENTER);
+
+        // Split dalam: tengah (list tugas) dan kanan (detail)
+        JSplitPane splitKonten = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelDaftar, panelDetail);
+        splitKonten.setDividerLocation(360); // panel tengah dan kanan dibuat sama besar
+        splitKonten.setResizeWeight(0.5);
+        splitKonten.setOneTouchExpandable(false);
+        splitKonten.setEnabled(false); // kunci divider agar tidak bisa di-drag user
+        splitKonten.setDividerSize(2); // tetap ada garis pembatas tipis
+
+        // Split utama: kiri (sidebar) dan kanan (konten utama)
+        JSplitPane splitUtama = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelAksi, splitKonten);
+        splitUtama.setDividerLocation(360); // panel kiri dibuat sama lebar dengan masing-masing panel kanan
+        splitUtama.setResizeWeight(0.333);
+        splitUtama.setOneTouchExpandable(false);
+        splitUtama.setEnabled(false); // kunci divider agar tidak bisa di-drag user
+        splitUtama.setDividerSize(2); // tetap ada garis pembatas tipis
 
         add(splitUtama, BorderLayout.CENTER);
+
+        // Saat user klik baris tabel, panel detail ikut berubah
+        tabel.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                perbaruiPanelDetail();
+            }
+        });
 
         muatTugas(layananTugas.ambilSemuaTugas());
     }
@@ -123,6 +234,7 @@ public class FrameManajerTugas extends JFrame {
             });
         }
         perbaruiPengingat();
+        perbaruiPanelDetail(); // sinkronkan panel detail setelah tabel di-refresh
     }
 
     private void perbaruiPengingat() {
@@ -160,6 +272,41 @@ public class FrameManajerTugas extends JFrame {
             default:
                 muatTugas(layananTugas.ambilSemuaTugas());
         }
+    }
+
+    private void perbaruiPanelDetail() {
+        int baris = tabel.getSelectedRow();
+
+        // Jika belum ada pilihan, tampilkan placeholder
+        if (baris < 0) {
+            labelDetailJudul.setText("Judul: -");
+            labelDetailTenggat.setText("Tenggat: -");
+            labelDetailPrioritas.setText("Prioritas: -");
+            labelDetailStatus.setText("Status: -");
+            areaDetailDeskripsi.setText("Pilih satu tugas di tabel untuk melihat detail.");
+            return;
+        }
+
+        Integer id = (Integer) modelTabel.getValueAt(baris, 0);
+        Tugas tugas = layananTugas.cariBerdasarkanId(id);
+
+        if (tugas == null) {
+            labelDetailJudul.setText("Judul: -");
+            labelDetailTenggat.setText("Tenggat: -");
+            labelDetailPrioritas.setText("Prioritas: -");
+            labelDetailStatus.setText("Status: -");
+            areaDetailDeskripsi.setText("Data tugas tidak ditemukan.");
+            return;
+        }
+
+        labelDetailJudul.setText("Judul: " + tugas.getJudul());
+        labelDetailTenggat.setText("Tenggat: " + tugas.getTenggat());
+        labelDetailPrioritas.setText("Prioritas: " + tugas.getPrioritas());
+        labelDetailStatus.setText("Status: " + (tugas.isSelesai() ? "Selesai" : "Belum"));
+        areaDetailDeskripsi.setText(
+                tugas.getDeskripsi() == null || tugas.getDeskripsi().isBlank()
+                        ? "(Tidak ada deskripsi)"
+                        : tugas.getDeskripsi());
     }
 
     private Integer ambilIdTugasTerpilih() {
