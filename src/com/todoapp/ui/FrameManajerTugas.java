@@ -6,6 +6,7 @@ import com.todoapp.service.LayananTugas;
 import javax.swing.JSplitPane;
 import java.awt.Color;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -15,6 +16,8 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerDateModel;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -24,33 +27,52 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.util.Date;
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 public class FrameManajerTugas extends JFrame {
+    // PETA UBAH CEPAT (UI):
+    // 1) Ukuran window: LEBAR_WINDOW, TINGGI_WINDOW
+    // 2) Lebar sidebar kiri: LEBAR_PANEL_KIRI
+    // 3) Tinggi tombol: TINGGI_TOMBOL_SIDEBAR, TINGGI_TOMBOL_FILTER
+    // 4) Jarak tombol sidebar: JARAK_ANTAR_TOMBOL_ATAS
+    // 5) Tinggi baris tabel: tabel.setRowHeight(...)
     private static final Color WARNA_PUTIH = Color.WHITE;
     private static final Color WARNA_BIRU = new Color(38, 128, 235);
     private static final Color WARNA_BIRU_MUDA = new Color(233, 244, 255);
+    private static final Color WARNA_GARIS = new Color(210, 215, 223);
+    // Ubah angka di sini kalau mau resize tampilan utama.
+    private static final int LEBAR_WINDOW = 1080;
+    private static final int TINGGI_WINDOW = 720;
+    // Ubah ini kalau mau lebar sidebar kiri.
+    private static final int LEBAR_PANEL_KIRI = 360;
+    // Ubah ini kalau mau tombol sidebar lebih tinggi/rendah.
+    private static final int TINGGI_TOMBOL_SIDEBAR = 50;
+    // Ubah ini kalau mau tombol filter punya tinggi berbeda dari tombol utama.
+    private static final int TINGGI_TOMBOL_FILTER = 30;
+    // Ubah ini untuk jarak vertikal antar tombol di panel kiri bagian atas.
+    private static final int JARAK_ANTAR_TOMBOL_ATAS = 8;
+    private static final DateTimeFormatter FORMAT_TENGGAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final LayananTugas layananTugas;
     private final DefaultTableModel modelTabel;
     private final JTable tabel;
     private final JTextArea areaPengingat;
+    private final JTextField fieldCari;
     private final JComboBox<String> comboFilter;
-    // Komponen panel detail (kolom kanan)
-    private final JLabel labelDetailJudul;
-    private final JLabel labelDetailTenggat;
-    private final JLabel labelDetailPrioritas;
-    private final JLabel labelDetailStatus;
-    private final JTextArea areaDetailDeskripsi;
 
     public FrameManajerTugas(LayananTugas layananTugas) {
         this.layananTugas = layananTugas;
 
         setTitle("To-Do App");
-        setSize(1080, 720);
-        setMinimumSize(new Dimension(1080, 720));
+        setSize(LEBAR_WINDOW, TINGGI_WINDOW);
+        setMinimumSize(new Dimension(LEBAR_WINDOW, TINGGI_WINDOW));
         setResizable(false); // kunci ukuran window supaya isi tidak saling numpuk
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -77,33 +99,33 @@ public class FrameManajerTugas extends JFrame {
 
         tabel = new JTable(modelTabel);
         tabel.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tabel.setRowHeight(28);
+        tabel.setRowHeight(28); // Ubah angka ini kalau tinggi baris tabel ingin disesuaikan.
         tabel.setFillsViewportHeight(true);
         tabel.setBackground(WARNA_PUTIH);
         tabel.setSelectionBackground(WARNA_BIRU_MUDA);
         tabel.setSelectionForeground(Color.BLACK);
 
-        JPanel panelAksi = new JPanel(new BorderLayout(0, 14));
-        JButton tombolTambah = new JButton("Tambah");
-        JButton tombolEdit = new JButton("Edit");
-        JButton tombolHapus = new JButton("Hapus");
-        JButton tombolUbahStatus = new JButton("Ubah Status");
+        // Header atas: nama dashboard dan sapaan dinamis sesuai jam laptop.
+        JPanel panelHeader = new JPanel(new BorderLayout());
+        panelHeader.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(WARNA_GARIS),
+            BorderFactory.createEmptyBorder(10, 16, 10, 16)));
+        panelHeader.setBackground(WARNA_PUTIH);
+        panelHeader.add(new JLabel("TaskMaster Dashboard"), BorderLayout.WEST);
+        panelHeader.add(new JLabel("Hai, Selamat " + buatSapaanWaktu()), BorderLayout.EAST);
+
+        JButton tombolTambah = new JButton("+ Tambah Tugas");
+        JButton tombolEdit = new JButton("/ Edit");
+        JButton tombolHapus = new JButton("X Hapus");
+        JButton tombolUbahStatus = new JButton("Tandai Selesai");
         JButton tombolMuatUlang = new JButton("Muat Ulang");
 
         comboFilter = new JComboBox<>(new String[] { "Semua", "Selesai", "Belum", "Tinggi", "Sedang", "Rendah" });
+        fieldCari = new JTextField();
         JButton tombolFilter = new JButton("Filter");
 
-        tombolTambah.putClientProperty("JButton.buttonType", "roundRect");
         tombolTambah.setBackground(WARNA_BIRU);
         tombolTambah.setForeground(Color.WHITE);
-        tombolEdit.setBackground(WARNA_PUTIH);
-        tombolEdit.setForeground(new Color(50, 50, 50));
-        tombolHapus.setBackground(WARNA_PUTIH);
-        tombolHapus.setForeground(new Color(50, 50, 50));
-        tombolUbahStatus.setBackground(WARNA_PUTIH);
-        tombolUbahStatus.setForeground(new Color(50, 50, 50));
-        tombolMuatUlang.setBackground(WARNA_PUTIH);
-        tombolMuatUlang.setForeground(new Color(50, 50, 50));
         tombolFilter.setBackground(WARNA_BIRU);
         tombolFilter.setForeground(Color.WHITE);
         tombolTambah.addActionListener(e -> tampilkanDialogTugas(null));
@@ -112,129 +134,133 @@ public class FrameManajerTugas extends JFrame {
         tombolUbahStatus.addActionListener(e -> ubahStatusTugasTerpilih());
         tombolMuatUlang.addActionListener(e -> muatTugas(layananTugas.ambilSemuaTugas()));
         tombolFilter.addActionListener(e -> terapkanFilter());
+        fieldCari.addActionListener(e -> terapkanFilter());
 
-        panelAksi.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        panelAksi.setPreferredSize(new Dimension(360, 0)); // panel kiri dibuat sepertiga lebar window
-        panelAksi.setBackground(WARNA_PUTIH);
+        // Sidebar kiri: shortcut filter status + menu umum.
+        JPanel panelSidebar = new JPanel();
+        panelSidebar.setLayout(new BoxLayout(panelSidebar, BoxLayout.Y_AXIS));
+        panelSidebar.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(WARNA_GARIS),
+            BorderFactory.createEmptyBorder(15, 12, 15, 12)));
+        panelSidebar.setPreferredSize(new Dimension(LEBAR_PANEL_KIRI, 0));
+        panelSidebar.setBackground(WARNA_PUTIH);
 
-        // Area atas: tombol utama ditumpuk vertikal
-        JPanel panelTombolUtama = new JPanel();
-        panelTombolUtama.setLayout(new BoxLayout(panelTombolUtama, BoxLayout.Y_AXIS));
-        panelTombolUtama.setBackground(WARNA_PUTIH);
+        JButton tombolSemua = new JButton("Semua Tugas");
+        JButton tombolOnProgress = new JButton("On-Progress");
+        JButton tombolCompleted = new JButton("Completed");
+        JButton tombolSettings = new JButton("Settings");
+        JButton tombolLogout = new JButton("Logout");
 
-        // Samakan ukuran agar tiap tombol terasa seperti menu sidebar
-        Dimension ukuranTombol = new Dimension(Integer.MAX_VALUE, 34);
-        tombolTambah.setMaximumSize(ukuranTombol);
-        tombolEdit.setMaximumSize(ukuranTombol);
-        tombolHapus.setMaximumSize(ukuranTombol);
-        tombolUbahStatus.setMaximumSize(ukuranTombol);
-        tombolMuatUlang.setMaximumSize(ukuranTombol);
+        aturUkuranTombolSidebar(tombolSemua);
+        aturUkuranTombolSidebar(tombolOnProgress);
+        aturUkuranTombolSidebar(tombolCompleted);
+        aturUkuranTombolSidebar(tombolSettings);
+        aturUkuranTombolSidebar(tombolLogout);
 
-        panelTombolUtama.add(tombolTambah);
-        panelTombolUtama.add(tombolEdit);
-        panelTombolUtama.add(tombolHapus);
-        panelTombolUtama.add(tombolUbahStatus);
-        panelTombolUtama.add(tombolMuatUlang);
-
-        // Area bawah: filter terpisah supaya lebih rapi
-        JPanel panelFilter = new JPanel();
-        panelFilter.setLayout(new BoxLayout(panelFilter, BoxLayout.Y_AXIS));
-        panelFilter.setBackground(WARNA_PUTIH);
-
-        JLabel labelFilter = new JLabel("Filter");
-        labelFilter.setForeground(new Color(50, 50, 50));
-        comboFilter.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        comboFilter.setForeground(new Color(50, 50, 50));
-        tombolFilter.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
-
-        panelFilter.add(labelFilter);
-        panelFilter.add(comboFilter);
-        panelFilter.add(tombolFilter);
-
-        panelAksi.add(panelTombolUtama, BorderLayout.NORTH);
-        panelAksi.add(panelFilter, BorderLayout.SOUTH);
-
-        // Panel tengah: pengingat + tabel (daftar tugas)
-        JPanel panelDaftar = new JPanel(new BorderLayout(8, 8));
-        panelDaftar.add(panelAtas, BorderLayout.NORTH);
-        panelDaftar.add(new JScrollPane(tabel), BorderLayout.CENTER);
-        panelDaftar.setBackground(WARNA_PUTIH);
-
-        // Panel kanan: detail tugas terpilih (meniru panel detail Microsoft To Do)
-        JPanel panelDetail = new JPanel(new BorderLayout(10, 10));
-        panelDetail.setBorder(BorderFactory.createTitledBorder("Detail Tugas"));
-        panelDetail.setBackground(WARNA_PUTIH);
-
-        JPanel panelInfoDetail = new JPanel();
-        panelInfoDetail.setLayout(new BoxLayout(panelInfoDetail, BoxLayout.Y_AXIS));
-        panelInfoDetail.setBackground(WARNA_PUTIH);
-
-        labelDetailJudul = new JLabel("Judul: -");
-        labelDetailTenggat = new JLabel("Tenggat: -");
-        labelDetailPrioritas = new JLabel("Prioritas: -");
-        labelDetailStatus = new JLabel("Status: -");
-        labelDetailJudul.setForeground(new Color(50, 50, 50));
-        labelDetailTenggat.setForeground(new Color(50, 50, 50));
-        labelDetailPrioritas.setForeground(new Color(50, 50, 50));
-        labelDetailStatus.setForeground(new Color(50, 50, 50));
-
-        panelInfoDetail.add(labelDetailJudul);
-        panelInfoDetail.add(labelDetailTenggat);
-        panelInfoDetail.add(labelDetailPrioritas);
-        panelInfoDetail.add(labelDetailStatus);
-
-        areaDetailDeskripsi = new JTextArea(8, 20);
-        areaDetailDeskripsi.setEditable(false);
-        areaDetailDeskripsi.setLineWrap(true);
-        areaDetailDeskripsi.setWrapStyleWord(true);
-        areaDetailDeskripsi.setBorder(BorderFactory.createTitledBorder("Catatan / Deskripsi"));
-        areaDetailDeskripsi.setBackground(WARNA_PUTIH);
-
-        panelDetail.add(panelInfoDetail, BorderLayout.NORTH);
-        panelDetail.add(new JScrollPane(areaDetailDeskripsi), BorderLayout.CENTER);
-
-        // Split dalam: tengah (list tugas) dan kanan (detail)
-        JSplitPane splitKonten = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelDaftar, panelDetail);
-        splitKonten.setDividerLocation(360); // panel tengah dan kanan dibuat sama besar
-        splitKonten.setResizeWeight(0.5);
-        splitKonten.setOneTouchExpandable(false);
-        splitKonten.setEnabled(false); // kunci divider agar tidak bisa di-drag user
-        splitKonten.setDividerSize(2); // tetap ada garis pembatas tipis
-
-        // Split utama: kiri (sidebar) dan kanan (konten utama)
-        JSplitPane splitUtama = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelAksi, splitKonten);
-        splitUtama.setDividerLocation(360); // panel kiri dibuat sama lebar dengan masing-masing panel kanan
-        splitUtama.setResizeWeight(0.333);
-        splitUtama.setOneTouchExpandable(false);
-        splitUtama.setEnabled(false); // kunci divider agar tidak bisa di-drag user
-        splitUtama.setDividerSize(2); // tetap ada garis pembatas tipis
-
-        add(splitUtama, BorderLayout.CENTER);
-
-        // Saat user klik baris tabel, panel detail ikut berubah
-        tabel.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                perbaruiPanelDetail();
+        tombolSemua.addActionListener(e -> {
+            comboFilter.setSelectedItem("Semua");
+            terapkanFilter();
+        });
+        tombolOnProgress.addActionListener(e -> {
+            comboFilter.setSelectedItem("Belum");
+            terapkanFilter();
+        });
+        tombolCompleted.addActionListener(e -> {
+            comboFilter.setSelectedItem("Selesai");
+            terapkanFilter();
+        });
+        tombolSettings.addActionListener(e -> JOptionPane.showMessageDialog(this, "Belum ada halaman pengaturan."));
+        tombolLogout.addActionListener(e -> {
+            int jawaban = JOptionPane.showConfirmDialog(this, "Keluar dari aplikasi?", "Konfirmasi", JOptionPane.YES_NO_OPTION);
+            if (jawaban == JOptionPane.YES_OPTION) {
+                dispose();
             }
         });
+
+        panelSidebar.add(new JLabel("Side Menu"));
+        panelSidebar.add(Box.createVerticalStrut(12));
+        panelSidebar.add(tombolSemua);
+        panelSidebar.add(Box.createVerticalStrut(JARAK_ANTAR_TOMBOL_ATAS));
+        panelSidebar.add(tombolOnProgress);
+        panelSidebar.add(Box.createVerticalStrut(JARAK_ANTAR_TOMBOL_ATAS));
+        panelSidebar.add(tombolCompleted);
+        panelSidebar.add(Box.createVerticalStrut(20));
+        panelSidebar.add(tombolSettings);
+        panelSidebar.add(Box.createVerticalStrut(JARAK_ANTAR_TOMBOL_ATAS));
+        panelSidebar.add(tombolLogout);
+        panelSidebar.add(Box.createVerticalGlue());
+
+        // Konten tengah: pencarian + filter + panel pengingat + tabel tugas.
+        JPanel panelKonten = new JPanel(new BorderLayout(8, 8));
+        panelKonten.setBorder(BorderFactory.createLineBorder(WARNA_GARIS));
+        panelKonten.setBackground(WARNA_PUTIH);
+
+        JPanel panelCariFilter = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
+        panelCariFilter.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(WARNA_GARIS),
+            BorderFactory.createEmptyBorder(4, 6, 4, 6)));
+        panelCariFilter.setBackground(WARNA_PUTIH);
+        panelCariFilter.add(new JLabel("Cari Tugas:"));
+        fieldCari.setPreferredSize(new Dimension(220, 30));
+        panelCariFilter.add(fieldCari);
+        panelCariFilter.add(new JLabel("Filter:"));
+        comboFilter.setPreferredSize(new Dimension(130, 30));
+        panelCariFilter.add(comboFilter);
+        aturUkuranTombolCustom(tombolFilter, TINGGI_TOMBOL_FILTER);
+        panelCariFilter.add(tombolFilter);
+
+        JPanel panelAtasKonten = new JPanel(new BorderLayout(8, 8));
+        panelAtasKonten.setBorder(BorderFactory.createLineBorder(WARNA_GARIS));
+        panelAtasKonten.setBackground(WARNA_PUTIH);
+        panelAtasKonten.add(panelCariFilter, BorderLayout.NORTH);
+        panelAtasKonten.add(panelAtas, BorderLayout.CENTER);
+
+        JScrollPane scrollTabel = new JScrollPane(tabel);
+        scrollTabel.setBorder(BorderFactory.createLineBorder(WARNA_GARIS));
+        panelKonten.add(panelAtasKonten, BorderLayout.NORTH);
+        panelKonten.add(scrollTabel, BorderLayout.CENTER);
+
+        // Split utama: sidebar kiri dan konten kanan.
+        JSplitPane splitUtama = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelSidebar, panelKonten);
+        splitUtama.setDividerLocation(LEBAR_PANEL_KIRI);
+        splitUtama.setResizeWeight(0.0);
+        splitUtama.setOneTouchExpandable(false);
+        splitUtama.setEnabled(false);
+        splitUtama.setDividerSize(2);
+
+        // Action bar bawah: tombol aksi data.
+        JPanel panelAksiBawah = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        panelAksiBawah.setBackground(WARNA_PUTIH);
+        panelAksiBawah.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(WARNA_GARIS),
+            BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+        panelAksiBawah.add(tombolTambah);
+        panelAksiBawah.add(tombolEdit);
+        panelAksiBawah.add(tombolHapus);
+        panelAksiBawah.add(tombolUbahStatus);
+        panelAksiBawah.add(tombolMuatUlang);
+
+        add(panelHeader, BorderLayout.NORTH);
+        add(splitUtama, BorderLayout.CENTER);
+        add(panelAksiBawah, BorderLayout.SOUTH);
 
         muatTugas(layananTugas.ambilSemuaTugas());
     }
 
     private void muatTugas(List<Tugas> daftarTugas) {
+        // Method ini sumber data tabel. Kalau mau tambah kolom, ubah di sini + modelTabel.
         modelTabel.setRowCount(0);
         for (Tugas tugas : daftarTugas) {
             modelTabel.addRow(new Object[] {
                     tugas.getId(),
                     tugas.getJudul(),
                     tugas.getDeskripsi(),
-                    tugas.getTenggat(),
+                    tugas.getTenggat().format(FORMAT_TENGGAT),
                     tugas.getPrioritas(),
                     tugas.isSelesai() ? "Selesai" : "Belum"
             });
         }
         perbaruiPengingat();
-        perbaruiPanelDetail(); // sinkronkan panel detail setelah tabel di-refresh
     }
 
     private void perbaruiPengingat() {
@@ -252,61 +278,63 @@ public class FrameManajerTugas extends JFrame {
     }
 
     private void terapkanFilter() {
+        // Filter gabungan: status/prioritas dari ComboBox + kata kunci judul/deskripsi.
         String opsi = String.valueOf(comboFilter.getSelectedItem());
+        List<Tugas> hasilDasar;
+
         switch (opsi) {
             case "Selesai":
-                muatTugas(layananTugas.saringBerdasarkanStatus(true));
+                hasilDasar = layananTugas.saringBerdasarkanStatus(true);
                 break;
             case "Belum":
-                muatTugas(layananTugas.saringBerdasarkanStatus(false));
+                hasilDasar = layananTugas.saringBerdasarkanStatus(false);
                 break;
             case "Tinggi":
-                muatTugas(layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.TINGGI));
+                hasilDasar = layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.TINGGI);
                 break;
             case "Sedang":
-                muatTugas(layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.SEDANG));
+                hasilDasar = layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.SEDANG);
                 break;
             case "Rendah":
-                muatTugas(layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.RENDAH));
+                hasilDasar = layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.RENDAH);
                 break;
             default:
-                muatTugas(layananTugas.ambilSemuaTugas());
+                hasilDasar = layananTugas.ambilSemuaTugas();
         }
+
+        String kataKunci = fieldCari.getText().trim().toLowerCase();
+        if (kataKunci.isEmpty()) {
+            muatTugas(hasilDasar);
+            return;
+        }
+
+        List<Tugas> hasilAkhir = new ArrayList<>();
+        for (Tugas tugas : hasilDasar) {
+            String judul = tugas.getJudul() == null ? "" : tugas.getJudul().toLowerCase();
+            String deskripsi = tugas.getDeskripsi() == null ? "" : tugas.getDeskripsi().toLowerCase();
+            if (judul.contains(kataKunci) || deskripsi.contains(kataKunci)) {
+                hasilAkhir.add(tugas);
+            }
+        }
+
+        muatTugas(hasilAkhir);
     }
 
-    private void perbaruiPanelDetail() {
-        int baris = tabel.getSelectedRow();
-
-        // Jika belum ada pilihan, tampilkan placeholder
-        if (baris < 0) {
-            labelDetailJudul.setText("Judul: -");
-            labelDetailTenggat.setText("Tenggat: -");
-            labelDetailPrioritas.setText("Prioritas: -");
-            labelDetailStatus.setText("Status: -");
-            areaDetailDeskripsi.setText("Pilih satu tugas di tabel untuk melihat detail.");
-            return;
+    private String buatSapaanWaktu() {
+        int jam = LocalTime.now().getHour();
+        if (jam < 5) {
+            return "Malam";
         }
-
-        Integer id = (Integer) modelTabel.getValueAt(baris, 0);
-        Tugas tugas = layananTugas.cariBerdasarkanId(id);
-
-        if (tugas == null) {
-            labelDetailJudul.setText("Judul: -");
-            labelDetailTenggat.setText("Tenggat: -");
-            labelDetailPrioritas.setText("Prioritas: -");
-            labelDetailStatus.setText("Status: -");
-            areaDetailDeskripsi.setText("Data tugas tidak ditemukan.");
-            return;
+        if (jam < 11) {
+            return "Pagi";
         }
-
-        labelDetailJudul.setText("Judul: " + tugas.getJudul());
-        labelDetailTenggat.setText("Tenggat: " + tugas.getTenggat());
-        labelDetailPrioritas.setText("Prioritas: " + tugas.getPrioritas());
-        labelDetailStatus.setText("Status: " + (tugas.isSelesai() ? "Selesai" : "Belum"));
-        areaDetailDeskripsi.setText(
-                tugas.getDeskripsi() == null || tugas.getDeskripsi().isBlank()
-                        ? "(Tidak ada deskripsi)"
-                        : tugas.getDeskripsi());
+        if (jam < 15) {
+            return "Siang";
+        }
+        if (jam < 18) {
+            return "Sore";
+        }
+        return "Malam";
     }
 
     private Integer ambilIdTugasTerpilih() {
@@ -358,6 +386,7 @@ public class FrameManajerTugas extends JFrame {
     }
 
     private void tampilkanDialogTugas(Tugas tugas) {
+        // Dialog ini dipakai untuk mode tambah (tugas == null) dan edit (tugas != null).
         JDialog dialog = new JDialog(this, tugas == null ? "Tambah Tugas" : "Edit Tugas", true);
         dialog.setSize(420, 280);
         dialog.setLocationRelativeTo(this);
@@ -369,14 +398,18 @@ public class FrameManajerTugas extends JFrame {
 
         JTextField fieldJudul = new JTextField();
         JTextField fieldDeskripsi = new JTextField();
-        JTextField fieldTenggat = new JTextField();
+        SpinnerDateModel modelTenggat = new SpinnerDateModel();
+        JSpinner spinnerTenggat = new JSpinner(modelTenggat);
+        spinnerTenggat.setEditor(new JSpinner.DateEditor(spinnerTenggat, "yyyy-MM-dd HH:mm"));
+        spinnerTenggat.setValue(new Date());
         JComboBox<String> fieldPrioritas = new JComboBox<>(new String[] { "TINGGI", "SEDANG", "RENDAH" });
 
         if (tugas != null) {
             fieldJudul.putClientProperty("JTextField.placeholderText", "Masukkan judul tugas...");
             fieldJudul.setText(tugas.getJudul());
             fieldDeskripsi.setText(tugas.getDeskripsi());
-            fieldTenggat.setText(tugas.getTenggat().toString());
+            Date tanggalLama = Date.from(tugas.getTenggat().atZone(ZoneId.systemDefault()).toInstant());
+            spinnerTenggat.setValue(tanggalLama);
             fieldPrioritas.setSelectedItem(tugas.getPrioritas().name());
         }
 
@@ -384,8 +417,8 @@ public class FrameManajerTugas extends JFrame {
         form.add(fieldJudul);
         form.add(new JLabel("Deskripsi"));
         form.add(fieldDeskripsi);
-        form.add(new JLabel("Tenggat (yyyy-MM-dd)"));
-        form.add(fieldTenggat);
+        form.add(new JLabel("Tenggat (Tanggal & Jam)"));
+        form.add(spinnerTenggat);
         form.add(new JLabel("Prioritas"));
         form.add(fieldPrioritas);
 
@@ -394,7 +427,6 @@ public class FrameManajerTugas extends JFrame {
         tombolSimpan.addActionListener(e -> {
             String judul = fieldJudul.getText().trim();
             String deskripsi = fieldDeskripsi.getText().trim();
-            String teksTenggat = fieldTenggat.getText().trim();
             Tugas.Prioritas prioritas = Tugas.Prioritas.valueOf(String.valueOf(fieldPrioritas.getSelectedItem()));
 
             if (judul.isEmpty()) {
@@ -402,13 +434,8 @@ public class FrameManajerTugas extends JFrame {
                 return;
             }
 
-            LocalDate tenggat;
-            try {
-                tenggat = LocalDate.parse(teksTenggat);
-            } catch (DateTimeParseException ex) {
-                JOptionPane.showMessageDialog(dialog, "Format tenggat harus yyyy-MM-dd.");
-                return;
-            }
+            Date tanggalDipilih = (Date) spinnerTenggat.getValue();
+            LocalDateTime tenggat = LocalDateTime.ofInstant(tanggalDipilih.toInstant(), ZoneId.systemDefault());
 
             if (tugas == null) {
                 layananTugas.tambahTugas(judul, deskripsi, tenggat, prioritas);
@@ -427,5 +454,16 @@ public class FrameManajerTugas extends JFrame {
         dialog.add(panelTombol, BorderLayout.SOUTH);
         dialog.setMinimumSize(new Dimension(420, 280));
         dialog.setVisible(true);
+    }
+
+    private void aturUkuranTombolSidebar(JButton tombol) {
+        aturUkuranTombolCustom(tombol, TINGGI_TOMBOL_SIDEBAR);
+    }
+
+    private void aturUkuranTombolCustom(JButton tombol, int tinggi) {
+        int lebarDefault = tombol.getPreferredSize().width;
+        tombol.setMinimumSize(new Dimension(lebarDefault, tinggi));
+        tombol.setPreferredSize(new Dimension(lebarDefault, tinggi));
+        tombol.setMaximumSize(new Dimension(Integer.MAX_VALUE, tinggi));
     }
 }

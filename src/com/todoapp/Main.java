@@ -10,9 +10,16 @@ import javax.swing.UIManager;
 import javax.swing.SwingUtilities;
 
 public class Main {
+    // PETA UBAH CEPAT:
+    // 1) Ganti tema global di FlatLaf.setup(...)
+    // 2) Ubah warna/radius komponen di UIManager.put(...)
+    // 3) Ubah lokasi file data di PengelolaFile("data.txt")
     public static void main(String[] args) {
+        // Ubah bagian ini kalau mau ganti tema aplikasi secara global.
         FlatLaf.setup(new FlatMacLightLaf());
 
+        // Nilai UIManager di bawah ini mengontrol gaya komponen Swing.
+        // Kalau warna atau radius berubah, cukup edit di sini.
         UIManager.put("Component.arc", 12);
         UIManager.put("Button.arc", 12);
         UIManager.put("TextComponent.arc", 10);
@@ -34,7 +41,9 @@ public class Main {
         UIManager.put("Button.default.foreground", java.awt.Color.WHITE);
         UIManager.put("Component.focusColor", new java.awt.Color(38, 128, 235));
 
+        // File data utama aplikasi.
         PengelolaFile pengelolaFile = new PengelolaFile("data.txt");
+        // Service ini yang dipakai UI untuk tambah, edit, hapus, dan filter tugas.
         LayananTugas layananTugas = new LayananTugas(pengelolaFile);
 
         SwingUtilities.invokeLater(() -> {
