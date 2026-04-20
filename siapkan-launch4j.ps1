@@ -119,6 +119,10 @@ $ikonAplikasi = ""
 $pathJar = Join-Path $akar "ToDoApp.jar"
 $pathExe = Join-Path $akar "ToDoTask.exe"
 
+if (-not (Test-Path $pathJar)) {
+    throw "File ToDoApp.jar belum ada. Jalankan build-jar.ps1 terlebih dahulu."
+}
+
 $pathIco = Join-Path $akar "icon.ico"
 $pathPng = Join-Path $akar "icon.png"
 

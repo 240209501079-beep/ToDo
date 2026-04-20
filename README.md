@@ -9,7 +9,7 @@ Aplikasi To-Do List berbasis GUI (Swing) dengan struktur package Java, fitur CRU
 ## Fitur
 - CRUD tugas
 - Status selesai / belum
-- Tenggat dengan format `yyyy-MM-dd`
+- Tenggat dengan format `yyyy-MM-dd HH:mm`
 - Prioritas (`TINGGI`, `SEDANG`, `RENDAH`)
 - Filter berdasarkan status dan prioritas
 - Pengingat otomatis untuk H-3, H-1, dan Hari H
@@ -17,10 +17,14 @@ Aplikasi To-Do List berbasis GUI (Swing) dengan struktur package Java, fitur CRU
 
 ## Struktur Utama
 - `src/com/todoapp/Main.java`
+- `src/com/todoapp/TemaAplikasi.java`
 - `src/com/todoapp/model/Tugas.java`
 - `src/com/todoapp/service/LayananTugas.java`
 - `src/com/todoapp/persistence/PengelolaFile.java`
 - `src/com/todoapp/ui/FrameManajerTugas.java`
+- `src/com/todoapp/ui/KonfigurasiUi.java`
+- `src/com/todoapp/ui/PembantuUi.java`
+- `src/com/todoapp/ui/WaktuSapaan.java`
 - `app-version.properties`
 - `build-jar.ps1`
 - `siapkan-launch4j.ps1`

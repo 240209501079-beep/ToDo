@@ -73,6 +73,7 @@ Output script:
 	1. Product Name: ToDoTask
 	2. Company Name: Kelompok 7
 	3. File Description: Aplikasi ToDo Desktop
+4. Script sekarang akan berhenti jika ToDoApp.jar belum ada (wajib jalankan build-jar.ps1 dulu)
 
 Contoh mapping versi:
 1. app.version=1.0.0

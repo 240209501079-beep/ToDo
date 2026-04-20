@@ -24,6 +24,8 @@ New-Item -ItemType Directory -Path bin | Out-Null
 
 # 2. Kompilasi
 Write-Host "Compiling Java sources..."
+# Compile dimulai dari Main.java, lalu javac akan menarik semua class terkait dari src/
+# termasuk hasil refactor seperti TemaAplikasi, KonfigurasiUi, PembantuUi, dan WaktuSapaan.
 javac -d bin -cp "lib/*" -sourcepath src src/com/todoapp/Main.java
 
 if ($LASTEXITCODE -eq 0) {
