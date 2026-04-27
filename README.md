@@ -10,7 +10,7 @@ Aplikasi To-Do List modern dengan sinkronisasi Firebase Cloud, fitur System Tray
 - **Installer Mandiri:** Bisa dijalankan di Windows mana pun tanpa perlu install Java secara manual.
 
 ## Cara Instalasi (Untuk User)
-1. Unduh file `To-Do List-Setup.exe` dari folder `HASIL-INSTALLER`.
+1. Unduh file `To-Do List-1.2.6.1.exe` dari folder `HASIL-INSTALLER`.
 2. Jalankan installer dan ikuti petunjuknya.
 3. Cari "To-Do List" di Start Menu untuk memulai.
 

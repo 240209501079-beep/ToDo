@@ -15,7 +15,7 @@ bin/
 out/
 
 # --- Installer Outputs ---
-HASIL-INSTALLER/
+# HASIL-INSTALLER/
 ToDoListPremium-Installer/
 output/
 
