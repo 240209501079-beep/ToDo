@@ -19,4 +19,11 @@ Thumbs.db
 # Logs
 *.log
 
-Client.txt
+# Data & Sesi
+session.json
+data.txt
+
+# Build Artifacts
+ToDoApp.jar
+ToDoTask.exe
+manifest-temp.mf

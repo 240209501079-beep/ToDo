@@ -1,92 +1,50 @@
-# Java To-Do GUI App
+# Java To-Do GUI App (Firebase Edition)
 
-Aplikasi To-Do List berbasis GUI (Swing) dengan struktur package Java, fitur CRUD, tenggat, prioritas, filter, pengingat, dan simpan data ke file.
+Aplikasi To-Do List berbasis GUI (Swing) modern dengan integrasi **Firebase Firestore** dan **Google Login**.
 
-## Catatan Update
-- Login sudah dihapus
-- Aplikasi langsung masuk ke layar manajer tugas
+## Catatan Update Utama
+- **Cloud Storage:** Menggunakan Firebase Firestore alih-alih file lokal.
+- **Google Login:** Otentikasi aman menggunakan Google OAuth2.
+- **Modern UI:** Tampilan premium dengan FlatLaf Mac Light theme dan ikon Unicode.
+- **Stay Logged In:** Sesi login disimpan secara lokal agar tidak perlu login berulang.
 
 ## Fitur
-- CRUD tugas
-- Status selesai / belum
-- Tenggat dengan format `yyyy-MM-dd HH:mm`
-- Prioritas (`TINGGI`, `SEDANG`, `RENDAH`)
+- CRUD tugas tersinkronisasi online
+- Google Sign-In terintegrasi browser
 - Filter berdasarkan status dan prioritas
-- Pengingat otomatis untuk H-3, H-1, dan Hari H
-- Persistensi data ke file `data.txt`
+- Pengingat otomatis (H-3, H-1, Hari H)
+- Metadata EXE otomatis untuk Launch4j
 
 ## Struktur Utama
-- `src/com/todoapp/Main.java`
-- `src/com/todoapp/TemaAplikasi.java`
-- `src/com/todoapp/model/Tugas.java`
-- `src/com/todoapp/service/LayananTugas.java`
-- `src/com/todoapp/persistence/PengelolaFile.java`
-- `src/com/todoapp/ui/FrameManajerTugas.java`
-- `src/com/todoapp/ui/KonfigurasiUi.java`
-- `src/com/todoapp/ui/PembantuUi.java`
-- `src/com/todoapp/ui/WaktuSapaan.java`
-- `app-version.properties`
-- `build-jar.ps1`
-- `siapkan-launch4j.ps1`
+- `src/com/todoapp/Main.java` - Entry point (Session Checker)
+- `src/com/todoapp/service/AuthService.java` - Logika Login Google & Firebase
+- `src/com/todoapp/persistence/FirebaseStorage.java` - Firestore REST Client
+- `src/com/todoapp/ui/LoginFrame.java` - Layar Login Modern
+- `src/com/todoapp/ui/FrameManajerTugas.java` - Dashboard Utama
+- `launch.ps1` - Skrip otomasi build & persiapan EXE
 
-## Menjalankan dari VS Code Task
-- Build: `Build ToDo App`
-- Run: `Run ToDo App`
-- Build JAR: `Build JAR ToDo App`
-- Generate config Launch4j: `Generate Launch4j Config`
+## Cara Menjalankan
 
-## Build dan Run Manual
-
-Compile:
-
+### Build dan Persiapan EXE Otomatis
+Gunakan skrip master untuk melakukan kompilasi JAR dan persiapan config Launch4j sekaligus:
 ```powershell
-if (Test-Path bin) { Remove-Item -Recurse -Force bin }
-New-Item -ItemType Directory -Path bin | Out-Null
-javac -d bin -cp "lib/*" -sourcepath src src/com/todoapp/Main.java
+.\launch.ps1
 ```
 
-Run:
-
-```powershell
-java -cp "bin;lib/*" com.todoapp.Main
-```
-
-## Build JAR
-
-```powershell
-powershell -ExecutionPolicy Bypass -File build-jar.ps1
-```
-
-Output:
-- `ToDoApp.jar`
-
-Test JAR:
-
+### Menjalankan JAR Langsung
 ```powershell
 java -jar ToDoApp.jar
 ```
 
-## Build EXE dengan Launch4j (Alur Otomatis)
+## Setup Firebase (Wajib untuk Dev)
+Aplikasi membutuhkan API Key dan Client ID Google yang valid di `KonfigurasiFirebase.java`.
+1. Siapkan project di Firebase Console.
+2. Aktifkan Authentication (Google) dan Firestore.
+3. Ambil Web API Key dan Web OAuth Client ID.
+4. Masukkan ke `src/com/todoapp/service/KonfigurasiFirebase.java`.
 
-1. Atur versi di `app-version.properties`
-2. Jalankan `build-jar.ps1`
-3. Jalankan `siapkan-launch4j.ps1`
-4. Buka `launch4j-config.xml` di Launch4j
-5. Klik Build wrapper
-
-Output:
-- `ToDoTask.exe`
-
-Metadata EXE yang diisi otomatis dari script:
-- Product Name: `ToDoTask`
-- Company Name: `Kelompok 7`
-- File Description: `Aplikasi ToDo Desktop`
-- Version: dari `app-version.properties`
-
-Catatan:
-- EXE Launch4j tetap membutuhkan Java Runtime minimal 17 di komputer target, kecuali bundling JRE.
-- Agar metadata versi EXE konsisten, selalu generate config dari script, jangan isi manual dari nol.
-
-## Panduan Lengkap
-
-Lihat file `CARA-BUAT-EXE.md` untuk alur detail dari versi aplikasi sampai build EXE.
+## Build EXE dengan Launch4j
+1. Jalankan `.\launch.ps1`
+2. Buka `launch4j-config.xml` di Launch4j.
+3. Klik Build wrapper (ikon gerigi).
+4. Hasil: `ToDoTask.exe`.

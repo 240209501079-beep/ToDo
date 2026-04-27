@@ -1,4 +1,4 @@
-﻿# Build JAR file for ToDo App
+# Build JAR file for ToDo App
 Write-Host "Building JAR file..." -ForegroundColor Green
 
 $fileVersi = "app-version.properties"
@@ -26,7 +26,7 @@ New-Item -ItemType Directory -Path bin | Out-Null
 Write-Host "Compiling Java sources..."
 # Compile dimulai dari Main.java, lalu javac akan menarik semua class terkait dari src/
 # termasuk hasil refactor seperti TemaAplikasi, KonfigurasiUi, PembantuUi, dan WaktuSapaan.
-javac -d bin -cp "lib/*" -sourcepath src src/com/todoapp/Main.java
+javac -encoding UTF-8 -d bin -cp "lib/*" -sourcepath src src/com/todoapp/Main.java
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Compilation successful!" -ForegroundColor Green
@@ -54,10 +54,10 @@ Implementation-Version: $versiAplikasi
     Remove-Item $manifestSementara -ErrorAction SilentlyContinue
     
     if (Test-Path ToDoApp.jar) {
-        Write-Host "✓ JAR created: ToDoApp.jar" -ForegroundColor Green
+        Write-Host "[OK] JAR created: ToDoApp.jar" -ForegroundColor Green
         Write-Host ""
         Write-Host "Sekarang kamu bisa jalankan dengan: java -jar ToDoApp.jar" -ForegroundColor Cyan
     } 
 } else {
-        Write-Host "✗ Compilation failed!" -ForegroundColor Red
+        Write-Host "[FAIL] Compilation failed!" -ForegroundColor Red
 }

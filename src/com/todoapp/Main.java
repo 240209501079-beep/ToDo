@@ -1,27 +1,37 @@
 package com.todoapp;
 
-import com.todoapp.persistence.PengelolaFile;
+import com.todoapp.persistence.FirebaseStorage;
+import com.todoapp.service.AuthService;
 import com.todoapp.service.LayananTugas;
+import com.todoapp.service.SessionManager;
 import com.todoapp.ui.FrameManajerTugas;
-
+import com.todoapp.ui.LoginFrame;
 import javax.swing.SwingUtilities;
 
 public class Main {
-    // PETA UBAH CEPAT:
-    // 1) Ganti tema global di TemaAplikasi.terapkanTemaDefault()
-    // 2) Ubah warna/radius komponen di class TemaAplikasi
-    // 3) Ubah lokasi file data di PengelolaFile("data.txt")
     public static void main(String[] args) {
         TemaAplikasi.terapkanTemaDefault();
-
-        // File data utama aplikasi.
-        PengelolaFile pengelolaFile = new PengelolaFile("data.txt");
-        // Service ini yang dipakai UI untuk tambah, edit, hapus, dan filter tugas.
-        LayananTugas layananTugas = new LayananTugas(pengelolaFile);
-
+        SessionManager sessionManager = new SessionManager();
+        
         SwingUtilities.invokeLater(() -> {
-            FrameManajerTugas tampilanUiMenu = new FrameManajerTugas(layananTugas);
-            tampilanUiMenu.setVisible(true);
+            if (sessionManager.muatSesi()) {
+                // Sesi ada, coba refresh token lalu masuk
+                AuthService auth = new AuthService();
+                auth.refreshFirebaseToken(sessionManager.getRefreshToken())
+                    .thenAccept(json -> {
+                        String newToken = json.get("access_token").getAsString();
+                        sessionManager.setFirebaseToken(newToken);
+                        
+                        FirebaseStorage storage = new FirebaseStorage(newToken, sessionManager.getUserId());
+                        LayananTugas service = new LayananTugas(storage);
+                        new FrameManajerTugas(service).setVisible(true);
+                    }).exceptionally(ex -> {
+                        new LoginFrame(sessionManager).setVisible(true);
+                        return null;
+                    });
+            } else {
+                new LoginFrame(sessionManager).setVisible(true);
+            }
         });
     }
 }

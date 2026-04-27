@@ -17,12 +17,12 @@
     <maxVersion></maxVersion>
   </jre>
   <versionInfo>
-    <fileVersion>1.1.4.0</fileVersion>
-    <txtFileVersion>1.1.4</txtFileVersion>
+    <fileVersion>1.1.8.0</fileVersion>
+    <txtFileVersion>1.1.8</txtFileVersion>
     <fileDescription>Aplikasi ToDo Desktop</fileDescription>
     <copyright>2026</copyright>
-    <productVersion>1.1.4.0</productVersion>
-    <txtProductVersion>1.1.4</txtProductVersion>
+    <productVersion>1.1.8.0</productVersion>
+    <txtProductVersion>1.1.8</txtProductVersion>
     <productName>ToDoTask</productName>
     <companyName>Kelompok 7</companyName>
     <internalName>ToDoTask</internalName>

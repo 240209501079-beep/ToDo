@@ -6,10 +6,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
 public class Tugas {
-    // PETA UBAH CEPAT:
-    // 1) Tambah field model: update atribut + constructor + getter/setter
-    // 2) Jangan lupa sinkronkan format file di keBarisData() dan dariBarisData()
-    // 3) Enkode/dekode teks ada di method enkode() dan dekode()
     private int id;
     private String judul;
     private String deskripsi;

@@ -2,481 +2,438 @@ package com.todoapp.ui;
 
 import com.todoapp.model.Tugas;
 import com.todoapp.service.LayananTugas;
-
-import javax.swing.JSplitPane;
-import java.awt.Color;
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JDialog;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSpinner;
-import javax.swing.SpinnerDateModel;
-import javax.swing.JTable;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingConstants;
+import com.todoapp.service.SessionManager;
+import com.todoapp.persistence.FirebaseStorage;
+import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.util.Date;
+import java.awt.*;
+import java.awt.font.TextAttribute;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.awt.font.TextAttribute;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 public class FrameManajerTugas extends JFrame {
-    // PETA UBAH CEPAT (UI):
-    // 1) Ukuran window: KonfigurasiUi.LEBAR_WINDOW, KonfigurasiUi.TINGGI_WINDOW
-    // 2) Lebar sidebar kiri: KonfigurasiUi.LEBAR_PANEL_KIRI
-    // 3) Tinggi tombol: KonfigurasiUi.TINGGI_TOMBOL_SIDEBAR, KonfigurasiUi.TINGGI_TOMBOL_FILTER
-    // 4) Jarak tombol sidebar: KonfigurasiUi.JARAK_ANTAR_TOMBOL_ATAS
-    // 5) Tinggi baris tabel: tabel.setRowHeight(...)
-    private static final String LABEL_STATUS_SELESAI = "[Selesai]";
-    private static final String LABEL_STATUS_BELUM = "[Belum]";
+    private static final String STATUS_DONE = "✓ Selesai";
+    private static final String STATUS_TODO = "○ Belum";
 
     private final LayananTugas layananTugas;
-    private final DefaultTableModel modelTabel;
-    private final JTable tabel;
-    private final JTextArea areaPengingat;
-    private final JTextField fieldCari;
-    private final JComboBox<String> comboFilter;
+    private final DefaultTableModel tableModel;
+    private final JTable table;
+    private final JLabel labelReminder;
+    private final JTextField searchField;
+    private final JComboBox<String> filterCombo;
 
     public FrameManajerTugas(LayananTugas layananTugas) {
         this.layananTugas = layananTugas;
 
-        setTitle("To-Do App");
+        initWindow();
+
+        // Components initialization
+        searchField = new JTextField();
+        filterCombo = new JComboBox<>(new String[] { "Semua", "Selesai", "Belum", "Tinggi", "Sedang", "Rendah" });
+        labelReminder = new JLabel("Memuat pengingat...");
+        labelReminder.setForeground(KonfigurasiUi.WARNA_ABU_TEKS);
+
+        tableModel = createTableModel();
+        table = createTable();
+
+        // Layout Assembly
+        JPanel sidebar = createSidebar();
+        JPanel mainContent = createMainContent();
+
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sidebar, mainContent);
+        splitPane.setDividerLocation(KonfigurasiUi.LEBAR_PANEL_KIRI);
+        splitPane.setDividerSize(1);
+        splitPane.setEnabled(false);
+        splitPane.setBorder(null);
+
+        add(createHeader(), BorderLayout.NORTH);
+        add(splitPane, BorderLayout.CENTER);
+        add(createActionBar(), BorderLayout.SOUTH);
+
+        refreshData();
+    }
+
+    private void initWindow() {
+        setTitle("Task Manager Pro");
         setSize(KonfigurasiUi.LEBAR_WINDOW, KonfigurasiUi.TINGGI_WINDOW);
         setMinimumSize(new Dimension(KonfigurasiUi.LEBAR_WINDOW, KonfigurasiUi.TINGGI_WINDOW));
-        setResizable(false); // kunci ukuran window supaya isi tidak saling numpuk
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         getContentPane().setBackground(KonfigurasiUi.WARNA_BG_KONTEN);
+    }
 
-        areaPengingat = new JTextArea(3, 30);
-        areaPengingat.setEditable(false);
-        areaPengingat.setLineWrap(true);
-        areaPengingat.setWrapStyleWord(true);
-
-        JPanel panelAtas = new JPanel(new BorderLayout());
-        panelAtas.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        panelAtas.add(new JScrollPane(areaPengingat), BorderLayout.CENTER);
-        panelAtas.setBackground(KonfigurasiUi.WARNA_BG_KONTEN);
-
-        modelTabel = new DefaultTableModel(
+    private DefaultTableModel createTableModel() {
+        return new DefaultTableModel(
                 new String[] { "ID", "Judul", "Deskripsi", "Tenggat", "Prioritas", "Status" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-
-        tabel = new JTable(modelTabel);
-        tabel.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tabel.setRowHeight(28); // Ubah angka ini kalau tinggi baris tabel ingin disesuaikan.
-        tabel.setFillsViewportHeight(true);
-        tabel.setBackground(KonfigurasiUi.WARNA_PUTIH);
-        tabel.setSelectionBackground(KonfigurasiUi.WARNA_BIRU_MUDA);
-        tabel.setSelectionForeground(Color.BLACK);
-        pasangRendererStatusSelesai();
-
-        // Header atas: nama dashboard dan sapaan dinamis sesuai jam laptop.
-        JPanel panelHeader = new JPanel(new BorderLayout());
-        panelHeader.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
-        panelHeader.setBackground(KonfigurasiUi.WARNA_BG_HEADER);
-        JLabel labelSapaan = new JLabel("Hai, Selamat " + WaktuSapaan.buatSapaanWaktu());
-        labelSapaan.setFont(labelSapaan.getFont().deriveFont((float) KonfigurasiUi.UKURAN_FONT_SAPAAN));
-        panelHeader.add(labelSapaan, BorderLayout.EAST);
-
-        JButton tombolTambah = new JButton("+ Tambah Tugas");
-        JButton tombolEdit = new JButton("/ Edit");
-        JButton tombolHapus = new JButton("X Hapus");
-        JButton tombolUbahStatus = new JButton("Tandai Selesai");
-        JButton tombolMuatUlang = new JButton("Muat Ulang");
-
-        comboFilter = new JComboBox<>(new String[] { "Semua", "Selesai", "Belum", "Tinggi", "Sedang", "Rendah" });
-        fieldCari = new JTextField();
-        JButton tombolFilter = new JButton("Filter");
-
-        tombolTambah.setBackground(KonfigurasiUi.WARNA_HIJAU);
-        tombolTambah.setForeground(Color.WHITE);
-        tombolFilter.setBackground(KonfigurasiUi.WARNA_BIRU);
-        tombolFilter.setForeground(Color.WHITE);
-        tombolFilter.putClientProperty(
-            "FlatLaf.style",
-            PembantuUi.gayaTombolFilter());
-        tombolFilter.setFocusPainted(false);
-        tombolFilter.setContentAreaFilled(true);
-        tombolFilter.setOpaque(true);
-        tombolFilter.setBorderPainted(true);
-        tombolTambah.addActionListener(e -> tampilkanDialogTugas(null));
-        tombolEdit.addActionListener(e -> editTugasTerpilih());
-        tombolHapus.addActionListener(e -> hapusTugasTerpilih());
-        tombolUbahStatus.addActionListener(e -> ubahStatusTugasTerpilih());
-        tombolMuatUlang.addActionListener(e -> muatTugas(layananTugas.ambilSemuaTugas()));
-        tombolFilter.addActionListener(e -> terapkanFilter());
-        fieldCari.addActionListener(e -> terapkanFilter());
-
-        // Sidebar kiri: shortcut filter status + menu umum.
-        JPanel panelSidebar = new JPanel();
-        panelSidebar.setLayout(new BoxLayout(panelSidebar, BoxLayout.Y_AXIS));
-        panelSidebar.setBorder(BorderFactory.createEmptyBorder(15, 12, 15, 12));
-        panelSidebar.setPreferredSize(new Dimension(KonfigurasiUi.LEBAR_PANEL_KIRI, 0));
-        panelSidebar.setBackground(KonfigurasiUi.WARNA_BG_SIDEBAR);
-
-        JButton tombolSemua = new JButton("Semua Tugas");
-        JButton tombolOnProgress = new JButton("On-Progress");
-        JButton tombolCompleted = new JButton("Completed");
-        JButton tombolSettings = new JButton("Settings");
-        JButton tombolLogout = new JButton("Keluar");
-
-        PembantuUi.aturGayaTombolSidebar(tombolSemua);
-        PembantuUi.aturGayaTombolSidebar(tombolOnProgress);
-        PembantuUi.aturGayaTombolSidebar(tombolCompleted);
-        PembantuUi.aturGayaTombolSidebar(tombolSettings);
-        PembantuUi.aturGayaTombolSidebar(tombolLogout);
-
-        tombolSemua.addActionListener(e -> {
-            comboFilter.setSelectedItem("Semua");
-            terapkanFilter();
-        });
-        tombolOnProgress.addActionListener(e -> {
-            comboFilter.setSelectedItem("Belum");
-            terapkanFilter();
-        });
-        tombolCompleted.addActionListener(e -> {
-            comboFilter.setSelectedItem("Selesai");
-            terapkanFilter();
-        });
-        tombolSettings.addActionListener(e -> JOptionPane.showMessageDialog(this, "Belum ada halaman pengaturan."));
-        tombolLogout.addActionListener(e -> {
-            int jawaban = JOptionPane.showConfirmDialog(this, "Keluar dari aplikasi?", "Konfirmasi", JOptionPane.YES_NO_OPTION);
-            if (jawaban == JOptionPane.YES_OPTION) {
-                dispose();
-            }
-        });
-
-        JLabel labelSideMenu = new JLabel("Side Menu");
-        labelSideMenu.setForeground(KonfigurasiUi.WARNA_TULISAN_SIDEMENU);
-        panelSidebar.add(labelSideMenu);
-        panelSidebar.add(Box.createVerticalStrut(12));
-        panelSidebar.add(tombolSemua);
-        panelSidebar.add(Box.createVerticalStrut(KonfigurasiUi.JARAK_ANTAR_TOMBOL_ATAS));
-        panelSidebar.add(tombolOnProgress);
-        panelSidebar.add(Box.createVerticalStrut(KonfigurasiUi.JARAK_ANTAR_TOMBOL_ATAS));
-        panelSidebar.add(tombolCompleted);
-        panelSidebar.add(Box.createVerticalStrut(20));
-        panelSidebar.add(tombolSettings);
-        panelSidebar.add(Box.createVerticalStrut(KonfigurasiUi.JARAK_ANTAR_TOMBOL_ATAS));
-        panelSidebar.add(tombolLogout);
-        panelSidebar.add(Box.createVerticalGlue());
-
-        // Konten tengah: pencarian + filter + panel pengingat + tabel tugas.
-        JPanel panelKonten = new JPanel(new BorderLayout(8, 8));
-        panelKonten.setBorder(BorderFactory.createEmptyBorder());
-        panelKonten.setBackground(KonfigurasiUi.WARNA_BG_KONTEN);
-
-        JPanel panelCariFilter = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
-        panelCariFilter.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
-        panelCariFilter.setBackground(KonfigurasiUi.WARNA_BG_KONTEN);
-        JLabel labelCari = new JLabel("Cari Tugas:");
-        labelCari.setForeground(KonfigurasiUi.WARNA_TULISAN_LABEL_FILTER);
-        panelCariFilter.add(labelCari);
-        fieldCari.setPreferredSize(new Dimension(220, 30));
-        panelCariFilter.add(fieldCari);
-        JLabel labelFilter = new JLabel("Filter:");
-        labelFilter.setForeground(KonfigurasiUi.WARNA_TULISAN_LABEL_FILTER);
-        panelCariFilter.add(labelFilter);
-        comboFilter.setPreferredSize(new Dimension(130, 30));
-        panelCariFilter.add(comboFilter);
-        PembantuUi.aturUkuranTombol(tombolFilter, KonfigurasiUi.TINGGI_TOMBOL_FILTER, KonfigurasiUi.LEBAR_TOMBOL_FILTER);
-        panelCariFilter.add(tombolFilter);
-
-        JPanel panelAtasKonten = new JPanel(new BorderLayout(8, 8));
-        panelAtasKonten.setBorder(BorderFactory.createEmptyBorder());
-        panelAtasKonten.setBackground(KonfigurasiUi.WARNA_BG_KONTEN);
-        panelAtasKonten.add(panelCariFilter, BorderLayout.NORTH);
-        panelAtasKonten.add(panelAtas, BorderLayout.CENTER);
-
-        JScrollPane scrollTabel = new JScrollPane(tabel);
-        scrollTabel.setBorder(BorderFactory.createEmptyBorder());
-        panelKonten.add(panelAtasKonten, BorderLayout.NORTH);
-        panelKonten.add(scrollTabel, BorderLayout.CENTER);
-
-        // Split utama: sidebar kiri dan konten kanan.
-        JSplitPane splitUtama = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelSidebar, panelKonten);
-        splitUtama.setDividerLocation(KonfigurasiUi.LEBAR_PANEL_KIRI);
-        splitUtama.setResizeWeight(0.0);
-        splitUtama.setOneTouchExpandable(false);
-        splitUtama.setEnabled(false);
-        splitUtama.setDividerSize(KonfigurasiUi.LEBAR_PEMBATAS_TENGAH);
-        splitUtama.setBackground(KonfigurasiUi.WARNA_BG_KONTEN);
-        splitUtama.setBorder(BorderFactory.createEmptyBorder());
-
-        // Action bar bawah: tombol aksi data.
-        JPanel panelAksiBawah = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
-        panelAksiBawah.setBackground(KonfigurasiUi.WARNA_BG_HEADER);
-        panelAksiBawah.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
-        panelAksiBawah.add(tombolTambah);
-        panelAksiBawah.add(tombolEdit);
-        panelAksiBawah.add(tombolHapus);
-        panelAksiBawah.add(tombolUbahStatus);
-        panelAksiBawah.add(tombolMuatUlang);
-
-        add(panelHeader, BorderLayout.NORTH);
-        add(splitUtama, BorderLayout.CENTER);
-        add(panelAksiBawah, BorderLayout.SOUTH);
-
-        muatTugas(layananTugas.ambilSemuaTugas());
     }
 
-    private void muatTugas(List<Tugas> daftarTugas) {
-        // Method ini sumber data tabel. Kalau mau tambah kolom, ubah di sini + modelTabel.
-        modelTabel.setRowCount(0);
-        for (Tugas tugas : daftarTugas) {
-            modelTabel.addRow(new Object[] {
-                    tugas.getId(),
-                    tugas.getJudul(),
-                    tugas.getDeskripsi(),
-                    tugas.getTenggat().format(KonfigurasiUi.FORMAT_TENGGAT),
-                    tugas.getPrioritas(),
-                    tugas.isSelesai() ? LABEL_STATUS_SELESAI : LABEL_STATUS_BELUM
-            });
-        }
-        perbaruiPengingat();
+    private JTable createTable() {
+        JTable t = new JTable(tableModel);
+        t.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        t.setRowHeight(40);
+        t.setShowGrid(true);
+        t.setGridColor(KonfigurasiUi.WARNA_GARIS);
+        t.setFillsViewportHeight(true);
+        t.setSelectionBackground(KonfigurasiUi.WARNA_BIRU_MUDA);
+        t.setSelectionForeground(KonfigurasiUi.WARNA_HITAM);
+
+        applyCustomRenderers(t);
+        return t;
     }
 
-    private void perbaruiPengingat() {
-        List<String> daftarPengingat = layananTugas.ambilPengingat();
-        if (daftarPengingat.isEmpty()) {
-            areaPengingat.setText("Tidak ada pengingat untuk H-3, H-1, atau Hari H.");
-            return;
-        }
-
-        StringBuilder pembuatTeks = new StringBuilder();
-        for (String pengingat : daftarPengingat) {
-            pembuatTeks.append(pengingat).append(System.lineSeparator());
-        }
-        areaPengingat.setText(pembuatTeks.toString());
-    }
-
-    private void terapkanFilter() {
-        // Filter gabungan: status/prioritas dari ComboBox + kata kunci judul/deskripsi.
-        String opsi = String.valueOf(comboFilter.getSelectedItem());
-        List<Tugas> hasilDasar;
-
-        switch (opsi) {
-            case "Selesai":
-                hasilDasar = layananTugas.saringBerdasarkanStatus(true);
-                break;
-            case "Belum":
-                hasilDasar = layananTugas.saringBerdasarkanStatus(false);
-                break;
-            case "Tinggi":
-                hasilDasar = layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.TINGGI);
-                break;
-            case "Sedang":
-                hasilDasar = layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.SEDANG);
-                break;
-            case "Rendah":
-                hasilDasar = layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.RENDAH);
-                break;
-            default:
-                hasilDasar = layananTugas.ambilSemuaTugas();
-        }
-
-        String kataKunci = fieldCari.getText().trim().toLowerCase();
-        if (kataKunci.isEmpty()) {
-            muatTugas(hasilDasar);
-            return;
-        }
-
-        List<Tugas> hasilAkhir = new ArrayList<>();
-        for (Tugas tugas : hasilDasar) {
-            String judul = tugas.getJudul() == null ? "" : tugas.getJudul().toLowerCase();
-            String deskripsi = tugas.getDeskripsi() == null ? "" : tugas.getDeskripsi().toLowerCase();
-            if (judul.contains(kataKunci) || deskripsi.contains(kataKunci)) {
-                hasilAkhir.add(tugas);
-            }
-        }
-
-        muatTugas(hasilAkhir);
-    }
-
-    private Integer ambilIdTugasTerpilih() {
-        int baris = tabel.getSelectedRow();
-        if (baris < 0) {
-            JOptionPane.showMessageDialog(this, "Pilih tugas terlebih dahulu.");
-            return null;
-        }
-
-        return (Integer) modelTabel.getValueAt(baris, 0);
-    }
-
-    private void editTugasTerpilih() {
-        Integer id = ambilIdTugasTerpilih();
-        if (id == null) {
-            return;
-        }
-
-        Tugas tugas = layananTugas.cariBerdasarkanId(id);
-        if (tugas == null) {
-            JOptionPane.showMessageDialog(this, "Tugas tidak ditemukan.");
-            return;
-        }
-
-        tampilkanDialogTugas(tugas);
-    }
-
-    private void hapusTugasTerpilih() {
-        Integer id = ambilIdTugasTerpilih();
-        if (id == null) {
-            return;
-        }
-
-        int jawaban = JOptionPane.showConfirmDialog(this, "Hapus tugas ini?", "Konfirmasi", JOptionPane.YES_NO_OPTION);
-        if (jawaban == JOptionPane.YES_OPTION && layananTugas.hapusTugas(id)) {
-            muatTugas(layananTugas.ambilSemuaTugas());
-        }
-    }
-
-    private void ubahStatusTugasTerpilih() {
-        Integer id = ambilIdTugasTerpilih();
-        if (id == null) {
-            return;
-        }
-
-        if (layananTugas.ubahStatus(id)) {
-            muatTugas(layananTugas.ambilSemuaTugas());
-        }
-    }
-
-    private void tampilkanDialogTugas(Tugas tugas) {
-        // Dialog ini dipakai untuk mode tambah (tugas == null) dan edit (tugas != null).
-        JDialog dialog = new JDialog(this, tugas == null ? "Tambah Tugas" : "Edit Tugas", true);
-        dialog.setSize(460, 380);
-        dialog.setLocationRelativeTo(this);
-        dialog.setLayout(new BorderLayout(8, 8));
-
-        JPanel form = new JPanel();
-        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-        form.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-
-        JTextField fieldJudul = new JTextField();
-        JTextArea fieldDeskripsi = new JTextArea(5, 20);
-        fieldDeskripsi.setLineWrap(true);
-        fieldDeskripsi.setWrapStyleWord(true);
-        JScrollPane scrollDeskripsi = new JScrollPane(fieldDeskripsi);
-        scrollDeskripsi.setPreferredSize(new Dimension(0, 110));
-        SpinnerDateModel modelTenggat = new SpinnerDateModel();
-        JSpinner spinnerTenggat = new JSpinner(modelTenggat);
-        spinnerTenggat.setEditor(new JSpinner.DateEditor(spinnerTenggat, "yyyy-MM-dd HH:mm"));
-        spinnerTenggat.setValue(new Date());
-        JComboBox<String> fieldPrioritas = new JComboBox<>(new String[] { "TINGGI", "SEDANG", "RENDAH" });
-
-        if (tugas != null) {
-            fieldJudul.putClientProperty("JTextField.placeholderText", "Masukkan judul tugas...");
-            fieldJudul.setText(tugas.getJudul());
-            fieldDeskripsi.setText(tugas.getDeskripsi());
-            Date tanggalLama = Date.from(tugas.getTenggat().atZone(ZoneId.systemDefault()).toInstant());
-            spinnerTenggat.setValue(tanggalLama);
-            fieldPrioritas.setSelectedItem(tugas.getPrioritas().name());
-        }
-
-        form.add(new JLabel("Judul"));
-        form.add(fieldJudul);
-        form.add(new JLabel("Deskripsi"));
-        form.add(scrollDeskripsi);
-        form.add(new JLabel("Tenggat (Tanggal & Jam)"));
-        form.add(spinnerTenggat);
-        form.add(new JLabel("Prioritas"));
-        form.add(fieldPrioritas);
-
-        JButton tombolSimpan = new JButton("Simpan");
-        tombolSimpan.setHorizontalAlignment(SwingConstants.CENTER);
-        tombolSimpan.addActionListener(e -> {
-            String judul = fieldJudul.getText().trim();
-            String deskripsi = fieldDeskripsi.getText().trim();
-            Tugas.Prioritas prioritas = Tugas.Prioritas.valueOf(String.valueOf(fieldPrioritas.getSelectedItem()));
-
-            if (judul.isEmpty()) {
-                JOptionPane.showMessageDialog(dialog, "Judul wajib diisi.");
-                return;
-            }
-
-            Date tanggalDipilih = (Date) spinnerTenggat.getValue();
-            LocalDateTime tenggat = LocalDateTime.ofInstant(tanggalDipilih.toInstant(), ZoneId.systemDefault());
-
-            if (tugas == null) {
-                layananTugas.tambahTugas(judul, deskripsi, tenggat, prioritas);
-            } else {
-                layananTugas.ubahTugas(tugas.getId(), judul, deskripsi, tenggat, prioritas);
-            }
-
-            dialog.dispose();
-            muatTugas(layananTugas.ambilSemuaTugas());
-        });
-
-        JPanel panelTombol = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        panelTombol.add(tombolSimpan);
-
-        dialog.add(form, BorderLayout.CENTER);
-        dialog.add(panelTombol, BorderLayout.SOUTH);
-        dialog.setMinimumSize(new Dimension(460, 380));
-        dialog.setVisible(true);
-    }
-
-    private void pasangRendererStatusSelesai() {
-        // Jika status selesai, judul/deskripsi dibuat tercoret agar progres lebih jelas.
-        final int kolomStatus = 5;
-        final int kolomJudul = 1;
-        final int kolomDeskripsi = 2;
-
-        tabel.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+    private void applyCustomRenderers(JTable t) {
+        t.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
-            public Component getTableCellRendererComponent(
-                    JTable table,
-                    Object value,
-                    boolean isSelected,
-                    boolean hasFocus,
-                    int row,
-                    int column) {
-                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int col) {
+                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
 
-                Object nilaiStatus = table.getModel().getValueAt(row, kolomStatus);
-                String status = String.valueOf(nilaiStatus);
-                boolean selesai = LABEL_STATUS_SELESAI.equals(status) || "[✓]".equals(status);
+                String status = String.valueOf(table.getModel().getValueAt(row, 5));
+                boolean isDone = STATUS_DONE.equals(status);
 
-                java.awt.Font fontNormal = table.getFont();
-                setFont(fontNormal);
-
-                if (selesai && (column == kolomJudul || column == kolomDeskripsi)) {
-                    Map<TextAttribute, Object> atribut = new HashMap<>(fontNormal.getAttributes());
-                    atribut.put(TextAttribute.STRIKETHROUGH, TextAttribute.STRIKETHROUGH_ON);
-                    setFont(fontNormal.deriveFont(atribut));
+                // Strike-through for done tasks
+                if (isDone && (col == 1 || col == 2)) {
+                    Map<TextAttribute, Object> attributes = new HashMap<>(getFont().getAttributes());
+                    attributes.put(TextAttribute.STRIKETHROUGH, TextAttribute.STRIKETHROUGH_ON);
+                    setFont(getFont().deriveFont(attributes));
+                    setForeground(KonfigurasiUi.WARNA_ABU_TEKS);
+                } else {
+                    setFont(getFont().deriveFont(Font.PLAIN));
+                    if (!isSelected)
+                        setForeground(KonfigurasiUi.WARNA_HITAM);
                 }
 
-                if (!isSelected) {
-                    setForeground(selesai ? new Color(120, 120, 120) : Color.BLACK);
+                // Priority coloring
+                if (col == 4 && !isSelected) {
+                    String prio = String.valueOf(value);
+                    if ("TINGGI".equals(prio))
+                        setForeground(KonfigurasiUi.WARNA_MERAH);
+                    else if ("SEDANG".equals(prio))
+                        setForeground(KonfigurasiUi.WARNA_ORANYE);
+                    else if ("RENDAH".equals(prio))
+                        setForeground(KonfigurasiUi.WARNA_HIJAU);
                 }
 
+                setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
                 return this;
             }
         });
     }
 
+    private JPanel createHeader() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(KonfigurasiUi.WARNA_BG_HEADER);
+        p.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, KonfigurasiUi.WARNA_GARIS));
+        p.setPreferredSize(new Dimension(0, 60));
+
+        JLabel title = new JLabel("  Task Dashboard");
+        title.setFont(new Font("Inter", Font.BOLD, 20));
+        title.setForeground(KonfigurasiUi.WARNA_HITAM);
+
+        JLabel greeting = new JLabel("Hai, Selamat " + WaktuSapaan.buatSapaanWaktu() + "  ");
+        greeting.setFont(new Font("Inter", Font.PLAIN, 14));
+        greeting.setForeground(KonfigurasiUi.WARNA_ABU_TEKS);
+
+        p.add(title, BorderLayout.WEST);
+        p.add(greeting, BorderLayout.EAST);
+        return p;
+    }
+
+    private JPanel createSidebar() {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBackground(KonfigurasiUi.WARNA_BG_SIDEBAR);
+        p.setBorder(BorderFactory.createEmptyBorder(20, 15, 20, 15));
+
+        JLabel menuLabel = new JLabel("MENU UTAMA");
+        menuLabel.setForeground(KonfigurasiUi.WARNA_TULISAN_SIDEMENU);
+        menuLabel.setFont(new Font("Inter", Font.BOLD, 11));
+
+        JButton btnAll = new JButton(" 📋 Semua Tugas");
+        JButton btnProgress = new JButton(" 🕒 Sedang Berjalan");
+        JButton btnDone = new JButton(" ✅ Sudah Selesai");
+        JButton btnLogout = new JButton(" 🚪 Keluar");
+
+        for (JButton b : new JButton[] { btnAll, btnProgress, btnDone, btnLogout }) {
+            PembantuUi.aturGayaTombolSidebar(b);
+        }
+
+        btnAll.addActionListener(e -> {
+            filterCombo.setSelectedItem("Semua");
+            applyFilter();
+        });
+        btnProgress.addActionListener(e -> {
+            filterCombo.setSelectedItem("Belum");
+            applyFilter();
+        });
+        btnDone.addActionListener(e -> {
+            filterCombo.setSelectedItem("Selesai");
+            applyFilter();
+        });
+        btnLogout.addActionListener(e -> {
+            if (JOptionPane.showConfirmDialog(this, "Yakin ingin keluar?", "Konfirmasi",
+                    JOptionPane.YES_NO_OPTION) == 0) {
+                new SessionManager().hapusSesi();
+                new LoginFrame(new SessionManager()).setVisible(true);
+                dispose();
+            }
+        });
+
+        p.add(menuLabel);
+        p.add(Box.createVerticalStrut(15));
+        p.add(btnAll);
+        p.add(Box.createVerticalStrut(5));
+        p.add(btnProgress);
+        p.add(Box.createVerticalStrut(5));
+        p.add(btnDone);
+        p.add(Box.createVerticalGlue());
+        p.add(btnLogout);
+
+        return p;
+    }
+
+    private JPanel createMainContent() {
+        JPanel p = new JPanel(new BorderLayout(20, 20));
+        p.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        p.setBackground(KonfigurasiUi.WARNA_BG_KONTEN);
+
+        // Search & Filter Bar
+        JPanel topBar = new JPanel(new GridBagLayout());
+        topBar.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 0, 10);
+
+        searchField.setPreferredSize(new Dimension(300, 35));
+        searchField.putClientProperty("JTextField.placeholderText", "Cari tugas...");
+
+        filterCombo.setPreferredSize(new Dimension(120, 35));
+
+        JButton btnRefresh = new JButton("🔄");
+        btnRefresh.setPreferredSize(new Dimension(40, 35));
+        btnRefresh.addActionListener(e -> refreshData());
+
+        gbc.weightx = 1.0;
+        topBar.add(searchField, gbc);
+        gbc.weightx = 0.0;
+        topBar.add(filterCombo, gbc);
+        gbc.insets = new Insets(0, 0, 0, 0);
+        topBar.add(btnRefresh, gbc);
+
+        // Reminder Panel
+        JPanel reminderPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        reminderPanel.setBackground(KonfigurasiUi.WARNA_BIRU_MUDA);
+        reminderPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        reminderPanel.add(new JLabel("💡 "));
+        reminderPanel.add(labelReminder);
+
+        JPanel centerPanel = new JPanel(new BorderLayout(0, 15));
+        centerPanel.setOpaque(false);
+        centerPanel.add(reminderPanel, BorderLayout.NORTH);
+        centerPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+
+        p.add(topBar, BorderLayout.NORTH);
+        p.add(centerPanel, BorderLayout.CENTER);
+
+        searchField.addActionListener(e -> applyFilter());
+        filterCombo.addActionListener(e -> applyFilter());
+
+        return p;
+    }
+
+    private JPanel createActionBar() {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 15));
+        p.setBackground(KonfigurasiUi.WARNA_BG_HEADER);
+        p.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, KonfigurasiUi.WARNA_GARIS));
+
+        JButton btnAdd = new JButton("+ Tambah Tugas");
+        btnAdd.setBackground(KonfigurasiUi.WARNA_BIRU);
+        btnAdd.setForeground(Color.WHITE);
+
+        JButton btnEdit = new JButton("📝 Edit");
+        JButton btnDelete = new JButton("🗑️ Hapus");
+        JButton btnStatus = new JButton("✅ Tandai Selesai");
+
+        btnAdd.addActionListener(e -> showTaskDialog(null));
+        btnEdit.addActionListener(e -> editSelectedTask());
+        btnDelete.addActionListener(e -> deleteSelectedTask());
+        btnStatus.addActionListener(e -> toggleTaskStatus());
+
+        p.add(btnStatus);
+        p.add(new JSeparator(JSeparator.VERTICAL));
+        p.add(btnEdit);
+        p.add(btnDelete);
+        p.add(Box.createHorizontalStrut(10));
+        p.add(btnAdd);
+
+        return p;
+    }
+
+    private void refreshData() {
+        loadTasks(layananTugas.ambilSemuaTugas());
+    }
+
+    private void loadTasks(List<Tugas> tasks) {
+        tableModel.setRowCount(0);
+        for (Tugas t : tasks) {
+            tableModel.addRow(new Object[] {
+                    t.getId(),
+                    t.getJudul(),
+                    t.getDeskripsi(),
+                    t.getTenggat().format(KonfigurasiUi.FORMAT_TENGGAT),
+                    t.getPrioritas(),
+                    t.isSelesai() ? STATUS_DONE : STATUS_TODO
+            });
+        }
+        updateReminderLabel();
+    }
+
+    private void updateReminderLabel() {
+        List<String> reminders = layananTugas.ambilPengingat();
+        if (reminders.isEmpty()) {
+            labelReminder.setText("Semua tugas terkendali. Tidak ada tenggat dekat.");
+        } else {
+            labelReminder.setText(String.join(" | ", reminders));
+        }
+    }
+
+    private void applyFilter() {
+        String filter = (String) filterCombo.getSelectedItem();
+        List<Tugas> base;
+
+        if ("Selesai".equals(filter))
+            base = layananTugas.saringBerdasarkanStatus(true);
+        else if ("Belum".equals(filter))
+            base = layananTugas.saringBerdasarkanStatus(false);
+        else if ("Tinggi".equals(filter))
+            base = layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.TINGGI);
+        else if ("Sedang".equals(filter))
+            base = layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.SEDANG);
+        else if ("Rendah".equals(filter))
+            base = layananTugas.saringBerdasarkanPrioritas(Tugas.Prioritas.RENDAH);
+        else
+            base = layananTugas.ambilSemuaTugas();
+
+        String query = searchField.getText().trim().toLowerCase();
+        if (query.isEmpty()) {
+            loadTasks(base);
+        } else {
+            List<Tugas> filtered = new ArrayList<>();
+            for (Tugas t : base) {
+                if (t.getJudul().toLowerCase().contains(query) || t.getDeskripsi().toLowerCase().contains(query)) {
+                    filtered.add(t);
+                }
+            }
+            loadTasks(filtered);
+        }
+    }
+
+    private Integer getSelectedTaskId() {
+        int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Silakan pilih tugas terlebih dahulu.", "Peringatan",
+                    JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+        return (Integer) tableModel.getValueAt(row, 0);
+    }
+
+    private void editSelectedTask() {
+        Integer id = getSelectedTaskId();
+        if (id != null)
+            showTaskDialog(layananTugas.cariBerdasarkanId(id));
+    }
+
+    private void deleteSelectedTask() {
+        Integer id = getSelectedTaskId();
+        if (id != null && JOptionPane.showConfirmDialog(this, "Hapus tugas ini?", "Konfirmasi",
+                JOptionPane.YES_NO_OPTION) == 0) {
+            if (layananTugas.hapusTugas(id))
+                refreshData();
+        }
+    }
+
+    private void toggleTaskStatus() {
+        Integer id = getSelectedTaskId();
+        if (id != null && layananTugas.ubahStatus(id))
+            refreshData();
+    }
+
+    private void showTaskDialog(Tugas task) {
+        JDialog d = new JDialog(this, task == null ? "Tambah Tugas" : "Edit Tugas", true);
+        d.setSize(450, 400);
+        d.setLocationRelativeTo(this);
+
+        JPanel p = new JPanel(new GridBagLayout());
+        p.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.gridx = 0;
+
+        JTextField fJudul = new JTextField();
+        JTextArea fDesc = new JTextArea(4, 20);
+        fDesc.setLineWrap(true);
+        fDesc.setWrapStyleWord(true);
+        JSpinner fDate = new JSpinner(new SpinnerDateModel());
+        fDate.setEditor(new JSpinner.DateEditor(fDate, "yyyy-MM-dd HH:mm"));
+        JComboBox<Tugas.Prioritas> fPrio = new JComboBox<>(Tugas.Prioritas.values());
+
+        if (task != null) {
+            fJudul.setText(task.getJudul());
+            fDesc.setText(task.getDeskripsi());
+            fDate.setValue(Date.from(task.getTenggat().atZone(ZoneId.systemDefault()).toInstant()));
+            fPrio.setSelectedItem(task.getPrioritas());
+        }
+
+        gbc.gridy = 0;
+        p.add(new JLabel("Judul"), gbc);
+        gbc.gridy = 1;
+        p.add(fJudul, gbc);
+        gbc.gridy = 2;
+        p.add(new JLabel("Deskripsi"), gbc);
+        gbc.gridy = 3;
+        p.add(new JScrollPane(fDesc), gbc);
+        gbc.gridy = 4;
+        p.add(new JLabel("Tenggat"), gbc);
+        gbc.gridy = 5;
+        p.add(fDate, gbc);
+        gbc.gridy = 6;
+        p.add(new JLabel("Prioritas"), gbc);
+        gbc.gridy = 7;
+        p.add(fPrio, gbc);
+
+        JButton btnSave = new JButton("Simpan");
+        btnSave.addActionListener(e -> {
+            String j = fJudul.getText().trim();
+            if (j.isEmpty()) {
+                JOptionPane.showMessageDialog(d, "Judul tidak boleh kosong.");
+                return;
+            }
+
+            LocalDateTime dt = LocalDateTime.ofInstant(((Date) fDate.getValue()).toInstant(), ZoneId.systemDefault());
+            Tugas.Prioritas pr = (Tugas.Prioritas) fPrio.getSelectedItem();
+
+            if (task == null)
+                layananTugas.tambahTugas(j, fDesc.getText(), dt, pr);
+            else
+                layananTugas.ubahTugas(task.getId(), j, fDesc.getText(), dt, pr);
+
+            d.dispose();
+            refreshData();
+        });
+
+        d.add(p, BorderLayout.CENTER);
+        d.add(btnSave, BorderLayout.SOUTH);
+        d.setVisible(true);
+    }
 }
