@@ -28,7 +28,7 @@ function Show-Progress {
 # 1. Pastikan JAR sudah yang terbaru (Hapus yang lama dulu)
 Write-Host "[1/4] Membersihkan paket lama & membangun JAR baru..." -ForegroundColor Yellow
 if (Test-Path "ToDoApp.jar") { Remove-Item "ToDoApp.jar" -Force }
-if (Test-Path "ToDoTask.exe") { Remove-Item "ToDoTask.exe" -Force }
+if (Test-Path "To-Do List.exe") { Remove-Item "To-Do List.exe" -Force }
 .\launch.ps1
 Show-Progress 30 "Mengkompilasi Java"
 

@@ -70,7 +70,7 @@ Output script:
 1. launch4j-config.xml
 2. Metadata versi EXE terisi otomatis dari app-version.properties
 3. Metadata produk otomatis:
-	1. Product Name: ToDoTask
+	1. Product Name: To-Do List
 	2. Company Name: Kelompok 7
 	3. File Description: Aplikasi ToDo Desktop
 4. Script sekarang akan berhenti jika ToDoApp.jar belum ada (wajib jalankan build-jar.ps1 dulu)
@@ -85,17 +85,17 @@ Contoh mapping versi:
 2. Open config: launch4j-config.xml
 3. Cek field utama:
 	1. jar: D:\VisualSC\Java\ToDo\ToDo\ToDoApp.jar
-	2. outfile: D:\VisualSC\Java\ToDo\ToDo\ToDoTask.exe
+	2. outfile: D:\VisualSC\Java\ToDo\ToDo\To-Do List.exe
 	3. icon: D:\VisualSC\Java\ToDo\ToDo\icon.ico
 	4. minVersion: 17
 4. Klik Build wrapper
 
-Hasilnya: ToDoTask.exe di folder project.
+Hasilnya: To-Do List.exe di folder project.
 
 ## 6. Test EXE
 
 ```powershell
-.\ToDoTask.exe
+.\To-Do List.exe
 ```
 
 ## 7. Alur Rilis Berikutnya

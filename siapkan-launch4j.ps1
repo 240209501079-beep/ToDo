@@ -112,12 +112,12 @@ if (-not $versiAplikasi) {
 }
 
 $versiWindows = Ubah-KeVersiWindows -Versi $versiAplikasi
-$namaProduk = "ToDoTask"
+$namaProduk = "To-Do List"
 $namaPerusahaan = "Kelompok 7"
 $deskripsi = "Aplikasi ToDo Desktop"
 $ikonAplikasi = ""
 $pathJar = Join-Path $akar "ToDoApp.jar"
-$pathExe = Join-Path $akar "ToDoTask.exe"
+$pathExe = Join-Path $akar "To-Do List.exe"
 
 if (-not (Test-Path $pathJar)) {
     throw "File ToDoApp.jar belum ada. Jalankan build-jar.ps1 terlebih dahulu."
@@ -162,7 +162,7 @@ $xml = @"
     <productName>$namaProduk</productName>
     <companyName>$namaPerusahaan</companyName>
     <internalName>$namaProduk</internalName>
-                <originalFilename>ToDoTask.exe</originalFilename>
+                <originalFilename>To-Do List.exe</originalFilename>
   </versionInfo>
 </launch4jConfig>
 "@
