@@ -44,6 +44,8 @@ if (Test-Path "lib") { Copy-Item -Recurse "lib" -Destination $distDir }
 if (Test-Path "icon.png") { Copy-Item "icon.png" -Destination $distDir }
 if (Test-Path "iconmini.png") { Copy-Item "iconmini.png" -Destination $distDir }
 if (Test-Path "iconmin.png") { Copy-Item "iconmin.png" -Destination $distDir }
+# Sertakan file kredensial Firebase agar aplikasi bisa login setelah di-install
+if (Test-Path "firebase.properties") { Copy-Item "firebase.properties" -Destination $distDir }
 
 # --- LANGKAH 3/4 ---
 Write-Host "[3/4] Menciptakan Setup.exe (Proses Utama)..." -ForegroundColor Yellow

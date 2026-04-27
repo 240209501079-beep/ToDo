@@ -169,12 +169,14 @@ public class AuthService {
                     .thenApply(response -> {
                         if (response.statusCode() != 200) {
                             System.err.println("DEBUG [Auth-ERR]: Server merespon dengan status " + response.statusCode());
+                            // Lempar exception agar masuk ke exceptionally, bukan thenAccept
+                            throw new RuntimeException("TOKEN_EXPIRED: status=" + response.statusCode());
                         }
                         return JsonParser.parseString(response.body()).getAsJsonObject();
                     })
                     .thenAccept(future::complete)
                     .exceptionally(ex -> {
-                        System.err.println("DEBUG [Auth-Fatal]: Gagal menghubungi server: " + ex.getMessage());
+                        System.err.println("DEBUG [Auth-Fatal]: " + ex.getMessage());
                         future.completeExceptionally(ex);
                         return null;
                     });

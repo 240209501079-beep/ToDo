@@ -45,6 +45,7 @@ public class FrameManajerTugas extends JFrame {
         initSystemTray();
         log("DEBUG [F3]: initSystemTray Selesai.");
         startBackgroundReminder();
+        startAlarmChecker();
         log("DEBUG [F4]: startBackgroundReminder Selesai.");
         searchField = new JTextField();
         filterCombo = new JComboBox<>(new String[] { "Semua", "Selesai", "Belum", "Tinggi", "Sedang", "Rendah" });
@@ -131,22 +132,58 @@ public class FrameManajerTugas extends JFrame {
     }
 
     private void startBackgroundReminder() {
-        // Cek setiap 30 menit
         reminderTimer.scheduleAtFixedRate(new java.util.TimerTask() {
             @Override
             public void run() {
+                log("DEBUG [Reminder]: Memeriksa tugas mendesak dari cloud...");
+                // Ambil data terbaru dari cloud, bukan dari cache
+                layananTugas.ambilDataDariCloud();
                 List<String> pengingat = layananTugas.ambilPengingat();
-                if (!pengingat.isEmpty() && trayIcon != null) {
+
+                if (!pengingat.isEmpty()) {
+                    log("DEBUG [Reminder]: Ditemukan " + pengingat.size() + " tugas mendesak. Menampilkan notifikasi...");
                     StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < Math.min(pengingat.size(), 3); i++) {
-                        sb.append(pengingat.get(i)).append("\n");
+                        sb.append("• ").append(pengingat.get(i)).append("<br>");
                     }
-                    trayIcon.displayMessage("Pengingat Tugas!",
-                            "Ada " + pengingat.size() + " tugas mendesak:\n" + sb.toString(),
-                            TrayIcon.MessageType.INFO);
+
+                    // Gunakan custom toast saja (tidak ada duplikat dari JDK)
+                    NotifikasiToast.tampilkan(
+                        "Pengingat Tugas! (" + pengingat.size() + " tugas)",
+                        sb.toString()
+                    );
+                } else {
+                    log("DEBUG [Reminder]: Tidak ada tugas mendesak saat ini.");
                 }
             }
-        }, 10000, 30 * 60 * 1000); // Mulai setelah 10 detik, ulang setiap 30 menit
+        }, 10000, 30 * 60 * 1000); // Mulai 10 detik, ulang tiap 30 menit
+    }
+
+    /** Cek setiap menit apakah ada tugas yang jatuh tempo TEPAT di menit ini (alarm). */
+    private void startAlarmChecker() {
+        new java.util.Timer(true).scheduleAtFixedRate(new java.util.TimerTask() {
+            @Override
+            public void run() {
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                for (com.todoapp.model.Tugas t : layananTugas.ambilSemuaTugas()) {
+                    if (t.isSelesai()) continue;
+                    java.time.LocalDateTime tenggat = t.getTenggat();
+                    // Cek apakah tahun, bulan, hari, jam, MENIT sama persis
+                    if (tenggat.getYear()       == now.getYear()   &&
+                        tenggat.getMonthValue() == now.getMonthValue() &&
+                        tenggat.getDayOfMonth() == now.getDayOfMonth() &&
+                        tenggat.getHour()       == now.getHour()   &&
+                        tenggat.getMinute()     == now.getMinute()) {
+                        log("DEBUG [Alarm]: Tenggat tepat waktu untuk tugas: " + t.getJudul());
+                        // Gunakan custom toast saja (tidak ada duplikat dari JDK)
+                        NotifikasiToast.tampilkan(
+                            "⏰ ALARM! Tenggat Tiba!",
+                            "Tugas <b>" + t.getJudul() + "</b> sudah waktunya sekarang!"
+                        );
+                    }
+                }
+            }
+        }, 0, 60 * 1000); // Cek setiap 1 menit
     }
 
     private DefaultTableModel createTableModel() {
@@ -400,20 +437,23 @@ public class FrameManajerTugas extends JFrame {
         return p;
     }
 
-    public void refreshData() {
-        SwingUtilities.invokeLater(() -> {
-            labelReminder.setText("⌛ Menyinkronkan dengan Cloud...");
-            labelReminder.setForeground(KonfigurasiUi.WARNA_BIRU);
-        });
-
+    /** Ambil data dari cloud dan update tampilan. Harus dipanggil dari background thread! */
+    private void reloadUiDariCloud() {
         log("DEBUG [Refresh]: Mengambil data terbaru dari Firestore...");
         List<Tugas> dataBaru = layananTugas.ambilDataDariCloud();
-
         SwingUtilities.invokeLater(() -> {
             loadTasks(dataBaru);
             labelReminder.setForeground(KonfigurasiUi.WARNA_ABU_TEKS);
             log("DEBUG [Refresh]: Tampilan tabel diperbarui.");
         });
+    }
+
+    public void refreshData() {
+        SwingUtilities.invokeLater(() -> {
+            labelReminder.setText("⌛ Menyinkronkan dengan Cloud...");
+            labelReminder.setForeground(KonfigurasiUi.WARNA_BIRU);
+        });
+        new Thread(this::reloadUiDariCloud, "RefreshThread").start();
     }
 
     private JButton createSidebarButton(String text, String icon) {
@@ -522,15 +562,22 @@ public class FrameManajerTugas extends JFrame {
         Integer id = getSelectedTaskId();
         if (id != null && JOptionPane.showConfirmDialog(this, "Hapus tugas ini?", "Konfirmasi",
                 JOptionPane.YES_NO_OPTION) == 0) {
-            if (layananTugas.hapusTugas(id))
-                refreshData();
+            if (layananTugas.hapusTugas(id)) {
+                loadTasks(layananTugas.ambilSemuaTugas());
+                labelReminder.setText("✅ Tugas dihapus.");
+                labelReminder.setForeground(new Color(34, 197, 94));
+            }
         }
     }
 
     private void toggleTaskStatus() {
         Integer id = getSelectedTaskId();
-        if (id != null && layananTugas.ubahStatus(id))
-            refreshData();
+        if (id == null) return;
+        if (layananTugas.ubahStatus(id)) {
+            loadTasks(layananTugas.ambilSemuaTugas());
+            labelReminder.setText("✅ Status diperbarui.");
+            labelReminder.setForeground(new Color(34, 197, 94));
+        }
     }
 
     private void showTaskDialog(Tugas task) {
@@ -588,13 +635,26 @@ public class FrameManajerTugas extends JFrame {
             LocalDateTime dt = LocalDateTime.ofInstant(((Date) fDate.getValue()).toInstant(), ZoneId.systemDefault());
             Tugas.Prioritas pr = (Tugas.Prioritas) fPrio.getSelectedItem();
 
-            if (task == null)
+            // 1. Tulis ke cache lokal (instant, di EDT)
+            if (task == null) {
                 layananTugas.tambahTugas(j, fDesc.getText(), dt, pr);
-            else
+            } else {
                 layananTugas.ubahTugas(task.getId(), j, fDesc.getText(), dt, pr);
+            }
 
+            // 2. Tutup dialog
             d.dispose();
-            refreshData();
+
+            // 3. Refresh tabel INSTAN dari cache lokal
+            loadTasks(layananTugas.ambilSemuaTugas());
+            labelReminder.setText("✅ Tersimpan!");
+            labelReminder.setForeground(new Color(34, 197, 94));
+
+            // 4. Cloud sync di background - TANPA update ulang UI agar tidak timpa data baru
+            new Thread(() -> {
+                log("DEBUG [CloudSync]: Memverifikasi data ke Firestore...");
+                layananTugas.ambilDataDariCloud(); // hanya sync cache internal
+            }, "CloudSyncThread").start();
         });
 
         d.add(p, BorderLayout.CENTER);

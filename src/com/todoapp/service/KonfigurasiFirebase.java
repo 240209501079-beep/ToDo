@@ -1,27 +1,74 @@
 package com.todoapp.service;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.net.URI;
+import java.util.Properties;
+
 public final class KonfigurasiFirebase {
     private KonfigurasiFirebase() {}
 
-    // PENTING: Ganti nilai di bawah ini dengan kredensial Firebase Anda sendiri.
-    // Jangan pernah commit nilai asli ke Git! Gunakan environment variable atau file .env
-    public static final String GOOGLE_CLIENT_ID = System.getenv("GOOGLE_CLIENT_ID") != null
-            ? System.getenv("GOOGLE_CLIENT_ID")
-            : "YOUR_GOOGLE_CLIENT_ID_HERE";
+    private static final Properties props = muatKonfigurasi();
 
-    public static final String GOOGLE_CLIENT_SECRET = System.getenv("GOOGLE_CLIENT_SECRET") != null
-            ? System.getenv("GOOGLE_CLIENT_SECRET")
-            : "YOUR_GOOGLE_CLIENT_SECRET_HERE";
+    private static Properties muatKonfigurasi() {
+        Properties p = new Properties();
 
-    // API Key dari Firebase Project Settings
-    public static final String FIREBASE_API_KEY = System.getenv("FIREBASE_API_KEY") != null
-            ? System.getenv("FIREBASE_API_KEY")
-            : "YOUR_FIREBASE_API_KEY_HERE";
+        // Tentukan direktori JAR/EXE dengan benar untuk Windows (pakai toURI!)
+        String jarDir = ".";
+        try {
+            URI location = KonfigurasiFirebase.class
+                .getProtectionDomain().getCodeSource().getLocation().toURI();
+            File jarFile = new File(location);
+            jarDir = jarFile.isDirectory()
+                ? jarFile.getAbsolutePath()
+                : jarFile.getParentFile().getAbsolutePath();
+        } catch (Exception e) {
+            System.err.println("DEBUG [Config]: Gagal deteksi direktori JAR: " + e.getMessage());
+        }
 
-    // Project ID Firebase
-    public static final String FIREBASE_PROJECT_ID = "todolist-4b67f";
+        // Cari firebase.properties di berbagai lokasi
+        String[] lokasi = {
+            jarDir + "/firebase.properties",            // sama dengan JAR / app/
+            jarDir + "/../firebase.properties",         // parent dari app/ (folder instalasi)
+            System.getProperty("user.dir") + "/firebase.properties",  // working dir
+            System.getProperty("user.home") + "/firebase.properties", // home user
+            "firebase.properties",                                      // fallback relatif
+        };
 
-    // Redirect URI untuk menangkap token (harus didaftarkan di Google Cloud Console)
-    public static final String REDIRECT_URI = "http://127.0.0.1:8888";
-    public static final int REDIRECT_PORT = 8888;
+        for (String path : lokasi) {
+            File f = new File(path);
+            try {
+                if (f.exists() && f.isFile()) {
+                    try (FileInputStream fis = new FileInputStream(f)) {
+                        p.load(fis);
+                        System.out.println("DEBUG [Config]: Konfigurasi dimuat dari: "
+                            + f.getCanonicalPath());
+                        return p;
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("DEBUG [Config-ERR]: Gagal membaca " + path + ": " + e.getMessage());
+            }
+        }
+
+        System.err.println("PERINGATAN: firebase.properties tidak ditemukan di semua lokasi!");
+        System.err.println("           Gunakan Environment Variable sebagai fallback.");
+        return p;
+    }
+
+    private static String get(String key, String defaultVal) {
+        // Prioritas: file properties → environment variable → default
+        String val = props.getProperty(key);
+        if (val != null && !val.trim().isEmpty()) return val.trim();
+        val = System.getenv(key);
+        if (val != null && !val.trim().isEmpty()) return val.trim();
+        return defaultVal;
+    }
+
+    public static final String GOOGLE_CLIENT_ID     = get("GOOGLE_CLIENT_ID", "");
+    public static final String GOOGLE_CLIENT_SECRET = get("GOOGLE_CLIENT_SECRET", "");
+    public static final String FIREBASE_API_KEY     = get("FIREBASE_API_KEY", "");
+    public static final String FIREBASE_PROJECT_ID  = "todolist-4b67f";
+    public static final String REDIRECT_URI         = "http://127.0.0.1:8888";
+    public static final int    REDIRECT_PORT        = 8888;
 }
