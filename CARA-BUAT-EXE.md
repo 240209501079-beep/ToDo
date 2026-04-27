@@ -1,121 +1,265 @@
-# Alur Build JAR Sampai Build EXE (Launch4j)
+# 🛠️ Cara Build EXE — To-Do List (Java Desktop)
 
-Panduan ini mengikuti setup terbaru project, termasuk versi aplikasi terpusat.
+Panduan lengkap dari kompilasi source code Java hingga menghasilkan file `.exe` siap pakai.
 
-Lokasi project:
+---
 
-D:\VisualSC\Java\ToDo\ToDo
+## 📋 Ringkasan Dua Metode Build
 
-## Ringkasan File yang Dipakai
+| | **Metode A: Launch4j** | **Metode B: JPackage + WiX** |
+|---|---|---|
+| **Hasil** | `.exe` ringan (~2 MB) | Installer mandiri (~50+ MB) |
+| **Java di PC target** | **Wajib ada** (min Java 17) | **Tidak perlu** (JRE dibundel) |
+| **Alat tambahan** | Launch4j | JPackage + WiX Toolset v3 |
+| **Kecepatan build** | Cepat | Lebih lambat |
+| **Cocok untuk** | Developer / internal | Distribusi ke user umum |
 
-1. app-version.properties
-2. build-jar.ps1
-3. siapkan-launch4j.ps1
-4. launch4j-config.xml (hasil generate)
+---
 
-## 1. Atur Versi Aplikasi
+## ⚙️ Prasyarat
 
-Buka file app-version.properties lalu ubah nilainya.
+Pastikan semua alat berikut sudah terinstall:
 
-Contoh:
+- ✅ **Java JDK 17+** → [Download Adoptium](https://adoptium.net/)
+- ✅ **Launch4j** (Metode A) → [Download](https://launch4j.sourceforge.net/)
+- ✅ **WiX Toolset v3.11** (Metode B) → [Download](https://github.com/wixtoolset/wix3/releases)
 
-```properties
-app.version=1.0.0
+Verifikasi Java sudah terdeteksi di terminal:
+
+```powershell
+java -version
+javac -version
 ```
 
-Catatan:
-1. Gunakan format angka bertitik, contoh 1.0.0 atau 1.2.3
-2. Nilai ini akan dipakai untuk manifest JAR dan metadata EXE Launch4j
+---
 
-## 2. Build JAR
+## 📁 File yang Terlibat
 
-Jalankan:
+```
+ToDo/
+├── app-version.properties    ← (1) Sumber versi terpusat
+├── build-jar.ps1             ← (2) Script kompilasi → ToDoApp.jar
+├── siapkan-launch4j.ps1      ← (3) Script generate launch4j-config.xml
+├── launch4j-config.xml       ← (4) Config Launch4j (auto-generated, jangan edit manual)
+├── BUAT-INSTALLER.ps1        ← (5) Script build installer mandiri (Metode B)
+└── HASIL-INSTALLER/          ← Output installer .exe final
+```
+
+---
+
+## 🅰️ Metode A — Launch4j (Cepat, untuk Developer)
+
+### Langkah 1 — Atur Versi Aplikasi
+
+Buka `app-version.properties`:
+
+```properties
+app.version=1.2.6
+```
+
+> Gunakan format `MAJOR.MINOR.PATCH` (contoh: `1.0.0`, `1.2.6`).  
+> Nilai ini akan otomatis masuk ke manifest JAR dan metadata EXE Windows.
+
+---
+
+### Langkah 2 — Build JAR (Fat JAR)
+
+Buka terminal PowerShell di folder project, lalu jalankan:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File build-jar.ps1
 ```
 
-Yang dilakukan script ini:
-1. Bersihkan folder bin
-2. Compile source dengan classpath library
-3. Ekstrak dependency dari folder lib ke bin (fat jar)
-4. Buat ToDoApp.jar
-5. Tambahkan Implementation-Version ke manifest JAR berdasarkan app-version.properties
+**Yang terjadi secara otomatis:**
 
-## 3. Verifikasi dan Test JAR
+| Langkah | Aksi |
+|---|---|
+| 1 | Bersihkan folder `bin/` |
+| 2 | Kompilasi semua `.java` di `src/` dengan classpath `lib/` |
+| 3 | Salin aset gambar (`icon.png`, `iconmin.png`) ke `bin/` |
+| 4 | Ekstrak semua `.jar` di `lib/` ke dalam `bin/` → Fat JAR |
+| 5 | Buat `manifest-temp.mf` berisi `Main-Class` dan `Implementation-Version` |
+| 6 | Hasilkan `ToDoApp.jar` |
 
-Verifikasi file:
+**Output:** `ToDoApp.jar` di folder project.
+
+---
+
+### Langkah 3 — Verifikasi & Test JAR
 
 ```powershell
+# Pastikan file terbentuk
 dir ToDoApp.jar
-```
 
-Test jalan:
-
-```powershell
+# Jalankan untuk test
 java -jar ToDoApp.jar
 ```
 
-Kalau aplikasi terbuka normal, lanjut ke langkah Launch4j.
+Jika aplikasi terbuka normal → **lanjut ke langkah berikutnya**.
 
-## 4. Generate Konfigurasi Launch4j Otomatis
+---
 
-Jalankan:
+### Langkah 4 — Generate Konfigurasi Launch4j
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File siapkan-launch4j.ps1
 ```
 
-Output script:
-1. launch4j-config.xml
-2. Metadata versi EXE terisi otomatis dari app-version.properties
-3. Metadata produk otomatis:
-	1. Product Name: To-Do List
-	2. Company Name: Kelompok 7
-	3. File Description: Aplikasi ToDo Desktop
-4. Script sekarang akan berhenti jika ToDoApp.jar belum ada (wajib jalankan build-jar.ps1 dulu)
+**Yang terjadi secara otomatis:**
 
-Contoh mapping versi:
-1. app.version=1.0.0
-2. fileVersion di Launch4j menjadi 1.0.0.0
+1. Baca versi dari `app-version.properties`
+2. Konversi ke format Windows: `1.2.6` → `1.2.6.0`
+3. Jika `icon.ico` belum ada → generate otomatis dari `icon.png` (256×256)
+4. Generate file `launch4j-config.xml` dengan metadata lengkap:
 
-## 5. Build EXE di Launch4j
-
-1. Buka launch4j.exe
-2. Open config: launch4j-config.xml
-3. Cek field utama:
-	1. jar: D:\VisualSC\Java\ToDo\ToDo\ToDoApp.jar
-	2. outfile: D:\VisualSC\Java\ToDo\ToDo\To-Do List.exe
-	3. icon: D:\VisualSC\Java\ToDo\ToDo\icon.ico
-	4. minVersion: 17
-4. Klik Build wrapper
-
-Hasilnya: To-Do List.exe di folder project.
-
-## 6. Test EXE
-
-```powershell
-.\To-Do List.exe
+```xml
+<versionInfo>
+  <fileVersion>1.2.6.0</fileVersion>
+  <productName>To-Do List</productName>
+  <companyName>Kelompok 7</companyName>
+  <fileDescription>Aplikasi ToDo Desktop</fileDescription>
+</versionInfo>
 ```
 
-## 7. Alur Rilis Berikutnya
+> ⚠️ **Selalu gunakan file config yang di-generate script ini.**  
+> Jangan edit `launch4j-config.xml` secara manual agar versi tetap konsisten.
 
-Setiap mau rilis versi baru, ulangi urutan ini:
+---
+
+### Langkah 5 — Build EXE dengan Launch4j GUI
+
+1. Buka aplikasi **Launch4j**
+2. Klik **Open** → pilih file `launch4j-config.xml`
+3. Periksa field utama sudah benar:
+
+| Field | Nilai yang diharapkan |
+|---|---|
+| Jar | `...\ToDo\ToDoApp.jar` |
+| Output file | `...\ToDo\To-Do List.exe` |
+| Icon | `...\ToDo\icon.ico` |
+| Min JRE version | `17` |
+
+4. Klik tombol **Build wrapper** (ikon gear ⚙️)
+
+**Output:** `To-Do List.exe` di folder project (~2 MB).
+
+---
+
+### Langkah 6 — Test EXE
+
+```powershell
+.\"To-Do List.exe"
+```
+
+Jika berjalan normal → EXE siap dipakai/dibagikan ke sesama developer yang punya Java 17+.
+
+---
+
+### ♻️ Alur Rilis Versi Baru (Metode A)
+
+Setiap rilis versi baru, ulangi urutan berikut:
+
+```
 1. Ubah app.version di app-version.properties
-2. Jalankan build-jar.ps1
-3. Jalankan siapkan-launch4j.ps1
-4. Buka launch4j-config.xml
-5. Build wrapper
+        ↓
+2. Jalankan: build-jar.ps1
+        ↓
+3. Jalankan: siapkan-launch4j.ps1
+        ↓
+4. Buka Launch4j → load launch4j-config.xml → Build wrapper
+```
 
-## Opsi Via VS Code Task
+---
 
-Selain lewat terminal, Anda bisa jalankan task berikut di VS Code:
-1. Build JAR ToDo App
-2. Generate Launch4j Config
+## 🅱️ Metode B — JPackage + WiX (Installer Mandiri)
 
-## Catatan Penting
+Metode ini menghasilkan installer yang **sudah menyertakan JRE** sehingga user tidak perlu install Java sama sekali.
 
-1. Launch4j tidak otomatis membaca versi dari project jika isi form manual.
-2. Agar otomatis, selalu gunakan launch4j-config.xml yang di-generate script.
-3. EXE Launch4j tetap butuh Java Runtime minimal 17 di komputer target, kecuali Anda bundling JRE.
-4. Jalankan EXE dari folder yang sama dengan data.txt agar lokasi data konsisten.
+### Prasyarat Tambahan
+
+Pastikan **WiX Toolset v3.11** sudah terinstall di:
+```
+C:\Program Files (x86)\WiX Toolset v3.11\bin\
+```
+
+---
+
+### Jalankan Script All-in-One
+
+```powershell
+powershell -ExecutionPolicy Bypass -File BUAT-INSTALLER.ps1
+```
+
+**Yang terjadi secara otomatis (4 langkah dalam 1 script):**
+
+| Langkah | Aksi |
+|---|---|
+| 1/4 | Hapus JAR & EXE lama → build JAR baru via `launch.ps1` |
+| 2/4 | Buat folder `dist_temp/` → salin JAR, library, ikon, `firebase.properties` |
+| 3/4 | Jalankan `jpackage` → bungkus JAR + JRE → hasilkan installer `.exe` di `HASIL-INSTALLER/` |
+| 4/4 | Hapus folder `dist_temp/` (bersihkan sisa build) |
+
+**Output:** `HASIL-INSTALLER\To-Do List-x.x.x.exe`
+
+---
+
+### Parameter JPackage yang Digunakan
+
+```powershell
+jpackage --name "To-Do List"
+         --input dist_temp
+         --main-jar ToDoApp.jar
+         --main-class com.todoapp.Main
+         --type exe
+         --dest HASIL-INSTALLER
+         --icon icon.ico
+         --win-dir-chooser      # User bisa pilih folder instalasi
+         --win-shortcut         # Buat shortcut di Desktop
+         --win-menu             # Daftarkan ke Start Menu
+         --vendor "Kelompok 7 PBO"
+         --app-version "x.x.x"
+```
+
+---
+
+## 🆚 Via VS Code Task (Alternatif Terminal)
+
+Selain lewat terminal, build bisa dijalankan via **VS Code Task**:
+
+Tekan `Ctrl+Shift+P` → ketik **Run Task** → pilih:
+
+| Task Name | Setara dengan |
+|---|---|
+| `Build JAR ToDo App` | `build-jar.ps1` |
+| `Generate Launch4j Config` | `siapkan-launch4j.ps1` |
+
+---
+
+## ❗ Catatan Penting
+
+> [!IMPORTANT]
+> EXE hasil **Metode A (Launch4j)** tetap membutuhkan **Java Runtime 17+** di PC target.
+> Jika user tidak punya Java, gunakan **Metode B (JPackage + WiX)**.
+
+> [!WARNING]
+> Jangan edit `launch4j-config.xml` secara manual.
+> Selalu generate ulang via `siapkan-launch4j.ps1` agar versi konsisten dengan `app-version.properties`.
+
+> [!NOTE]
+> File `firebase.properties` ikut disalin saat build Metode B agar aplikasi bisa login setelah diinstall di PC lain.
+
+---
+
+## 🔍 Troubleshooting
+
+| Masalah | Solusi |
+|---|---|
+| `javac` tidak dikenal | Pastikan JDK (bukan JRE) terinstall dan masuk ke PATH |
+| `ToDoApp.jar belum ada` | Jalankan `build-jar.ps1` terlebih dahulu |
+| Launch4j gagal build | Pastikan path JAR dan icon di config sudah benar dan file ada |
+| `candle.exe tidak ditemukan` | Install WiX Toolset v3.11 atau tambahkan ke PATH |
+| Aplikasi tidak bisa login setelah install | Pastikan `firebase.properties` ikut disalin ke `dist_temp/` |
+
+---
+
+*Dikembangkan oleh **Kelompok 7 — PBO***
