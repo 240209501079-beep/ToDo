@@ -26,7 +26,8 @@ New-Item -ItemType Directory -Path bin | Out-Null
 Write-Host "Compiling Java sources..."
 javac -encoding UTF-8 -d bin -cp "lib/*" -sourcepath src src/com/todoapp/Main.java
 
-if ($currentDir -eq $null) { $currentDir = "." }
+if ($null -eq $currentDir) { $currentDir = "." }
+if (Test-Path "src\resources") { Copy-Item "src\resources\*" -Destination "bin" -Force -Recurse }
 if (Test-Path "icon.png") { Copy-Item "icon.png" -Destination "bin\icon.png" -Force }
 if (Test-Path "iconmini.png") { Copy-Item "iconmini.png" -Destination "bin\iconmini.png" -Force }
 if (Test-Path "iconmin.png") { Copy-Item "iconmin.png" -Destination "bin\iconmin.png" -Force }
@@ -61,6 +62,7 @@ Implementation-Version: $versiAplikasi
         Write-Host ""
         Write-Host "Sekarang kamu bisa jalankan dengan: java -jar ToDoApp.jar" -ForegroundColor Cyan
     } 
-} else {
-        Write-Host "[FAIL] Compilation failed!" -ForegroundColor Red
+}
+else {
+    Write-Host "[FAIL] Compilation failed!" -ForegroundColor Red
 }

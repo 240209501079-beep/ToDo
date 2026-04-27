@@ -13,7 +13,17 @@ public final class KonfigurasiFirebase {
     private static Properties muatKonfigurasi() {
         Properties p = new Properties();
 
-        // Tentukan direktori JAR/EXE dengan benar untuk Windows (pakai toURI!)
+        // 1. Coba muat dari Internal Resources (dalam JAR) sebagai default
+        try (java.io.InputStream is = KonfigurasiFirebase.class.getResourceAsStream("/firebase.properties")) {
+            if (is != null) {
+                p.load(is);
+                System.out.println("DEBUG [Config]: Konfigurasi default dimuat dari internal resource.");
+            }
+        } catch (Exception e) {
+            System.err.println("DEBUG [Config-ERR]: Gagal membaca internal resource: " + e.getMessage());
+        }
+
+        // 2. Cek lokasi eksternal untuk override (penting untuk pengembangan)
         String jarDir = ".";
         try {
             URI location = KonfigurasiFirebase.class
@@ -26,13 +36,12 @@ public final class KonfigurasiFirebase {
             System.err.println("DEBUG [Config]: Gagal deteksi direktori JAR: " + e.getMessage());
         }
 
-        // Cari firebase.properties di berbagai lokasi
         String[] lokasi = {
-            jarDir + "/firebase.properties",            // sama dengan JAR / app/
-            jarDir + "/../firebase.properties",         // parent dari app/ (folder instalasi)
-            System.getProperty("user.dir") + "/firebase.properties",  // working dir
-            System.getProperty("user.home") + "/firebase.properties", // home user
-            "firebase.properties",                                      // fallback relatif
+            jarDir + "/firebase.properties",
+            jarDir + "/../firebase.properties",
+            System.getProperty("user.dir") + "/firebase.properties",
+            System.getProperty("user.home") + "/firebase.properties",
+            "firebase.properties",
         };
 
         for (String path : lokasi) {
@@ -40,19 +49,21 @@ public final class KonfigurasiFirebase {
             try {
                 if (f.exists() && f.isFile()) {
                     try (FileInputStream fis = new FileInputStream(f)) {
-                        p.load(fis);
-                        System.out.println("DEBUG [Config]: Konfigurasi dimuat dari: "
-                            + f.getCanonicalPath());
+                        Properties overrideProps = new Properties();
+                        overrideProps.load(fis);
+                        p.putAll(overrideProps); // Override nilai internal dengan nilai eksternal
+                        System.out.println("DEBUG [Config]: Konfigurasi di-override dari: " + f.getCanonicalPath());
                         return p;
                     }
                 }
             } catch (Exception e) {
-                System.err.println("DEBUG [Config-ERR]: Gagal membaca " + path + ": " + e.getMessage());
+                // Abaikan jika satu lokasi gagal
             }
         }
 
-        System.err.println("PERINGATAN: firebase.properties tidak ditemukan di semua lokasi!");
-        System.err.println("           Gunakan Environment Variable sebagai fallback.");
+        if (p.isEmpty()) {
+            System.err.println("PERINGATAN: firebase.properties tidak ditemukan di resource maupun lokasi eksternal!");
+        }
         return p;
     }
 
