@@ -3,11 +3,11 @@ package com.todoapp.ui;
 import com.todoapp.model.Tugas;
 import com.todoapp.service.LayananTugas;
 import com.todoapp.service.SessionManager;
-import com.todoapp.persistence.FirebaseStorage;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.*;
 import java.awt.font.TextAttribute;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -19,18 +19,33 @@ public class FrameManajerTugas extends JFrame {
     private static final String STATUS_TODO = "○ Belum";
 
     private final LayananTugas layananTugas;
+    private final SessionManager sessionManager;
     private final DefaultTableModel tableModel;
     private final JTable table;
     private final JLabel labelReminder;
     private final JTextField searchField;
     private final JComboBox<String> filterCombo;
 
-    public FrameManajerTugas(LayananTugas layananTugas) {
+    private TrayIcon trayIcon;
+    private final java.util.Timer reminderTimer = new java.util.Timer(true);
+
+    private void log(String msg) {
+        String time = new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date());
+        System.out.println("[" + time + "] " + msg);
+    }
+
+    public FrameManajerTugas(LayananTugas layananTugas, SessionManager sessionManager) {
+        log("DEBUG [F1]: Memulai Konstruktor Frame...");
         this.layananTugas = layananTugas;
+        this.sessionManager = sessionManager;
 
         initWindow();
-
-        // Components initialization
+        PembantuUi.aturIkonWindow(this); // Paksa muat ikon lagi
+        log("DEBUG [F2]: initWindow Selesai.");
+        initSystemTray();
+        log("DEBUG [F3]: initSystemTray Selesai.");
+        startBackgroundReminder();
+        log("DEBUG [F4]: startBackgroundReminder Selesai.");
         searchField = new JTextField();
         filterCombo = new JComboBox<>(new String[] { "Semua", "Selesai", "Belum", "Tinggi", "Sedang", "Rendah" });
         labelReminder = new JLabel("Memuat pengingat...");
@@ -38,10 +53,12 @@ public class FrameManajerTugas extends JFrame {
 
         tableModel = createTableModel();
         table = createTable();
+        System.out.println("DEBUG [F5]: Table created.");
 
         // Layout Assembly
         JPanel sidebar = createSidebar();
         JPanel mainContent = createMainContent();
+        log("DEBUG [F6]: UI Panels created.");
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sidebar, mainContent);
         splitPane.setDividerLocation(KonfigurasiUi.LEBAR_PANEL_KIRI);
@@ -52,18 +69,84 @@ public class FrameManajerTugas extends JFrame {
         add(createHeader(), BorderLayout.NORTH);
         add(splitPane, BorderLayout.CENTER);
         add(createActionBar(), BorderLayout.SOUTH);
-
-        refreshData();
+        log("DEBUG [F7]: Layout assembled.");
     }
 
     private void initWindow() {
-        setTitle("Task Manager Pro");
+        setTitle("To-Do List");
+        PembantuUi.aturIkonWindow(this);
         setSize(KonfigurasiUi.LEBAR_WINDOW, KonfigurasiUi.TINGGI_WINDOW);
         setMinimumSize(new Dimension(KonfigurasiUi.LEBAR_WINDOW, KonfigurasiUi.TINGGI_WINDOW));
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+
+        // Ganti perilaku tombol X agar sembunyi ke Tray, bukan mati total
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                setVisible(false);
+            }
+        });
+
         setLayout(new BorderLayout());
         getContentPane().setBackground(KonfigurasiUi.WARNA_BG_KONTEN);
+    }
+
+    private void initSystemTray() {
+        try {
+            if (!SystemTray.isSupported()) {
+                log("System Tray tidak didukung di sistem ini.");
+                return;
+            }
+
+            SystemTray tray = SystemTray.getSystemTray();
+
+            // Load Ikon lewat PembantuUi (cache)
+            PembantuUi.aturIkonWindow(this);
+            Image image = getIconImage();
+
+            if (image == null) {
+                image = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            }
+
+            PopupMenu popup = new PopupMenu();
+            MenuItem openItem = new MenuItem("Buka Aplikasi");
+            MenuItem exitItem = new MenuItem("Matikan Total");
+
+            openItem.addActionListener(e -> SwingUtilities.invokeLater(() -> setVisible(true)));
+            exitItem.addActionListener(e -> System.exit(0));
+
+            popup.add(openItem);
+            popup.addSeparator();
+            popup.add(exitItem);
+
+            trayIcon = new TrayIcon(image, "ToDo Task Manager", popup);
+            trayIcon.setImageAutoSize(true);
+            trayIcon.addActionListener(e -> SwingUtilities.invokeLater(() -> setVisible(true)));
+
+            tray.add(trayIcon);
+        } catch (Exception e) {
+            System.err.println("Gagal menginisialisasi System Tray: " + e.getMessage());
+        }
+    }
+
+    private void startBackgroundReminder() {
+        // Cek setiap 30 menit
+        reminderTimer.scheduleAtFixedRate(new java.util.TimerTask() {
+            @Override
+            public void run() {
+                List<String> pengingat = layananTugas.ambilPengingat();
+                if (!pengingat.isEmpty() && trayIcon != null) {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < Math.min(pengingat.size(), 3); i++) {
+                        sb.append(pengingat.get(i)).append("\n");
+                    }
+                    trayIcon.displayMessage("Pengingat Tugas!",
+                            "Ada " + pengingat.size() + " tugas mendesak:\n" + sb.toString(),
+                            TrayIcon.MessageType.INFO);
+                }
+            }
+        }, 10000, 30 * 60 * 1000); // Mulai setelah 10 detik, ulang setiap 30 menit
     }
 
     private DefaultTableModel createTableModel() {
@@ -139,7 +222,12 @@ public class FrameManajerTugas extends JFrame {
         title.setFont(new Font("Inter", Font.BOLD, 20));
         title.setForeground(KonfigurasiUi.WARNA_HITAM);
 
-        JLabel greeting = new JLabel("Hai, Selamat " + WaktuSapaan.buatSapaanWaktu() + "  ");
+        String user = sessionManager.getUserEmail() != null ? sessionManager.getUserEmail() : "Pengguna";
+        if (user.contains("@")) {
+            user = user.split("@")[0]; // Ambil nama depan dari email
+        }
+
+        JLabel greeting = new JLabel("Halo, " + user + " | Selamat " + WaktuSapaan.buatSapaanWaktu() + "  ");
         greeting.setFont(new Font("Inter", Font.PLAIN, 14));
         greeting.setForeground(KonfigurasiUi.WARNA_ABU_TEKS);
 
@@ -161,9 +249,10 @@ public class FrameManajerTugas extends JFrame {
         JButton btnAll = new JButton(" 📋 Semua Tugas");
         JButton btnProgress = new JButton(" 🕒 Sedang Berjalan");
         JButton btnDone = new JButton(" ✅ Sudah Selesai");
-        JButton btnLogout = new JButton(" 🚪 Keluar");
+        JButton btnLogout = new JButton(" 🔓 Logout Akun");
+        JButton btnExit = new JButton(" ❌ Tutup Aplikasi");
 
-        for (JButton b : new JButton[] { btnAll, btnProgress, btnDone, btnLogout }) {
+        for (JButton b : new JButton[] { btnAll, btnProgress, btnDone, btnLogout, btnExit }) {
             PembantuUi.aturGayaTombolSidebar(b);
         }
 
@@ -180,11 +269,37 @@ public class FrameManajerTugas extends JFrame {
             applyFilter();
         });
         btnLogout.addActionListener(e -> {
-            if (JOptionPane.showConfirmDialog(this, "Yakin ingin keluar?", "Konfirmasi",
-                    JOptionPane.YES_NO_OPTION) == 0) {
+            log("DEBUG [Logout]: Menekan tombol logout...");
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Apakah Anda yakin ingin Logout (pindah akun)?",
+                    "Konfirmasi Logout",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                log("DEBUG [Logout]: Menghapus sesi lokal...");
                 new SessionManager().hapusSesi();
-                new LoginFrame(new SessionManager()).setVisible(true);
-                dispose();
+                SwingUtilities.invokeLater(() -> {
+                    log("DEBUG [Logout]: Kembali ke layar Login.");
+                    new LoginFrame(new SessionManager()).setVisible(true);
+                    this.dispose();
+                });
+            }
+        });
+
+        JButton btnHide = createSidebarButton("Tutup (Latar Belakang)", "📥");
+        btnHide.addActionListener(e -> setVisible(false));
+
+        // Tombol untuk matikan total
+        btnExit.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Matikan aplikasi? Pengingat tidak akan aktif.",
+                    "Konfirmasi Matikan",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                tampilkanLoadingMatikan();
             }
         });
 
@@ -197,6 +312,10 @@ public class FrameManajerTugas extends JFrame {
         p.add(btnDone);
         p.add(Box.createVerticalGlue());
         p.add(btnLogout);
+        p.add(Box.createVerticalStrut(10));
+        p.add(btnHide);
+        p.add(Box.createVerticalStrut(10));
+        p.add(btnExit);
 
         return p;
     }
@@ -220,7 +339,10 @@ public class FrameManajerTugas extends JFrame {
 
         JButton btnRefresh = new JButton("🔄");
         btnRefresh.setPreferredSize(new Dimension(40, 35));
-        btnRefresh.addActionListener(e -> refreshData());
+        btnRefresh.addActionListener(e -> {
+            System.out.println("DEBUG [Refresh-Manual]: Tombol refresh ditekan.");
+            refreshData();
+        });
 
         gbc.weightx = 1.0;
         topBar.add(searchField, gbc);
@@ -278,8 +400,51 @@ public class FrameManajerTugas extends JFrame {
         return p;
     }
 
-    private void refreshData() {
-        loadTasks(layananTugas.ambilSemuaTugas());
+    public void refreshData() {
+        SwingUtilities.invokeLater(() -> {
+            labelReminder.setText("⌛ Menyinkronkan dengan Cloud...");
+            labelReminder.setForeground(KonfigurasiUi.WARNA_BIRU);
+        });
+
+        log("DEBUG [Refresh]: Mengambil data terbaru dari Firestore...");
+        List<Tugas> dataBaru = layananTugas.ambilDataDariCloud();
+
+        SwingUtilities.invokeLater(() -> {
+            loadTasks(dataBaru);
+            labelReminder.setForeground(KonfigurasiUi.WARNA_ABU_TEKS);
+            log("DEBUG [Refresh]: Tampilan tabel diperbarui.");
+        });
+    }
+
+    private JButton createSidebarButton(String text, String icon) {
+        JButton btn = new JButton("<html><div style='text-align:left; width:150px;'>&nbsp;" + icon + "&nbsp;&nbsp;"
+                + text + "</div></html>");
+        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
+        btn.setPreferredSize(new Dimension(Integer.MAX_VALUE, 45));
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setForeground(KonfigurasiUi.WARNA_ABU_TEKS);
+        btn.setFont(new Font("Inter", Font.PLAIN, 14));
+        btn.setHorizontalAlignment(SwingConstants.LEFT);
+
+        btn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btn.setContentAreaFilled(true);
+                btn.setBackground(new Color(56, 189, 248, 40)); // Biru transparan untuk hover
+                btn.setForeground(Color.WHITE);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btn.setContentAreaFilled(false);
+                btn.setForeground(KonfigurasiUi.WARNA_ABU_TEKS);
+            }
+        });
+        return btn;
     }
 
     private void loadTasks(List<Tugas> tasks) {
@@ -434,6 +599,66 @@ public class FrameManajerTugas extends JFrame {
 
         d.add(p, BorderLayout.CENTER);
         d.add(btnSave, BorderLayout.SOUTH);
+        d.setVisible(true);
+    }
+
+    private void tampilkanLoadingMatikan() {
+        JDialog d = new JDialog(this, "Shutdown", true);
+        d.setUndecorated(true);
+        d.setSize(400, 150);
+        d.setLocationRelativeTo(this);
+        d.setBackground(new Color(0, 0, 0, 0));
+
+        JPanel p = new JPanel(new BorderLayout(15, 15)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(15, 23, 42)); // Dark Slate
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
+                g2.setColor(new Color(56, 189, 248, 100)); // Glow border
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 30, 30);
+                g2.dispose();
+            }
+        };
+        p.setOpaque(false);
+        p.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
+
+        JLabel lIcon = new JLabel("🛑");
+        lIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 40));
+
+        JLabel lText = new JLabel(
+                "<html><b>Mematikan Aplikasi...</b><br><font color='#94a3b8'>Membersihkan sesi dan pengingat latar belakang.</font></html>");
+        lText.setForeground(Color.WHITE);
+        lText.setFont(new Font("Inter", Font.PLAIN, 14));
+
+        JProgressBar pb = new JProgressBar();
+        pb.setIndeterminate(true);
+        pb.setPreferredSize(new Dimension(300, 4));
+        pb.setBackground(new Color(30, 41, 59));
+        pb.setForeground(new Color(56, 189, 248));
+        pb.setBorder(null);
+
+        JPanel center = new JPanel(new GridLayout(2, 1, 0, 5));
+        center.setOpaque(false);
+        center.add(lText);
+        center.add(pb);
+
+        p.add(lIcon, BorderLayout.WEST);
+        p.add(center, BorderLayout.CENTER);
+
+        d.add(p);
+
+        // Timer untuk menutup aplikasi setelah jeda singkat (agar user melihat
+        // loading-nya)
+        new java.util.Timer().schedule(new java.util.TimerTask() {
+            @Override
+            public void run() {
+                System.out.println("DEBUG: Shutdown Selesai. Keluar.");
+                System.exit(0);
+            }
+        }, 1500); // Tampilkan loading selama 1.5 detik
+
         d.setVisible(true);
     }
 }

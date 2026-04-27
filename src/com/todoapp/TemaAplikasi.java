@@ -6,7 +6,6 @@ import com.todoapp.ui.KonfigurasiUi;
 
 import javax.swing.UIManager;
 import java.awt.Color;
-import java.awt.Font;
 
 public final class TemaAplikasi {
     private TemaAplikasi() {
@@ -21,7 +20,7 @@ public final class TemaAplikasi {
         UIManager.put("TextComponent.arc", 10);
         UIManager.put("CheckBox.arc", 6);
         UIManager.put("ProgressBar.arc", 10);
-        
+
         // Focus & Borders
         UIManager.put("Component.focusWidth", 1);
         UIManager.put("Component.innerFocusWidth", 0);
@@ -44,7 +43,7 @@ public final class TemaAplikasi {
         UIManager.put("Button.background", KonfigurasiUi.WARNA_PUTIH);
         UIManager.put("Button.default.background", KonfigurasiUi.WARNA_BIRU);
         UIManager.put("Button.default.foreground", Color.WHITE);
-        
+
         // TabbedPane
         UIManager.put("TabbedPane.showTabSeparators", true);
         UIManager.put("TabbedPane.tabSeparatorsFullHeight", true);

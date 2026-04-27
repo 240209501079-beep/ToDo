@@ -1,29 +1,41 @@
-# Build outputs
+# --- Java ---
+*.class
+*.jar
+*.war
+*.ear
+
+# --- Kredensial Lokal (JANGAN DI-COMMIT!) ---
+.env.local
+.env
+
+# --- Build Folders ---
+dist_temp/
 bin/
 out/
-target/
-build/
 
-# Java bytecode
-*.class
+# --- Installer Outputs ---
+HASIL-INSTALLER/
+ToDoListPremium-Installer/
+output/
 
-# IDE and editor
+# --- Sensitif (Sangat Penting) ---
+session.json
+todoapp.lock
+
+# --- IDE (VS Code, IntelliJ, Eclipse) ---
 .vscode/
 .idea/
 *.iml
+.project
+.classpath
+.settings/
 
-# OS files
-.DS_Store
-Thumbs.db
-
-# Logs
+# --- Log Files ---
 *.log
 
-# Data & Sesi
-session.json
-data.txt
+# --- Launch4j (Optional: abaikan jika ingin config dibuat manual oleh user lain) ---
+# launch4j-config.xml
 
-# Build Artifacts
-ToDoApp.jar
-ToDoTask.exe
-manifest-temp.mf
+# --- OS yang mengganggu ---
+.DS_Store
+Thumbs.db

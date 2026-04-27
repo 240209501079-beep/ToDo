@@ -1,50 +1,28 @@
-# Java To-Do GUI App (Firebase Edition)
+# To-Do List (Java Desktop)
 
-Aplikasi To-Do List berbasis GUI (Swing) modern dengan integrasi **Firebase Firestore** dan **Google Login**.
+Aplikasi To-Do List modern dengan sinkronisasi Firebase Cloud, fitur System Tray, dan Smart Re-Open.
 
-## Catatan Update Utama
-- **Cloud Storage:** Menggunakan Firebase Firestore alih-alih file lokal.
-- **Google Login:** Otentikasi aman menggunakan Google OAuth2.
-- **Modern UI:** Tampilan premium dengan FlatLaf Mac Light theme dan ikon Unicode.
-- **Stay Logged In:** Sesi login disimpan secara lokal agar tidak perlu login berulang.
+## Fitur Utama
+- **Sinkronisasi Cloud:** Data tersimpan aman di Firebase Firestore.
+- **Smart Re-Open:** Jika aplikasi diklik saat sudah berjalan di Tray, ia akan otomatis muncul ke depan.
+- **System Tray:** Aplikasi bisa berjalan di latar belakang tanpa mengganggu taskbar.
+- **Premium UI:** Desain Dark Slate yang bersih dan responsif.
+- **Installer Mandiri:** Bisa dijalankan di Windows mana pun tanpa perlu install Java secara manual.
 
-## Fitur
-- CRUD tugas tersinkronisasi online
-- Google Sign-In terintegrasi browser
-- Filter berdasarkan status dan prioritas
-- Pengingat otomatis (H-3, H-1, Hari H)
-- Metadata EXE otomatis untuk Launch4j
+## Cara Instalasi (Untuk User)
+1. Unduh file `To-Do List-Setup.exe` dari folder `HASIL-INSTALLER`.
+2. Jalankan installer dan ikuti petunjuknya.
+3. Cari "To-Do List" di Start Menu untuk memulai.
 
-## Struktur Utama
-- `src/com/todoapp/Main.java` - Entry point (Session Checker)
-- `src/com/todoapp/service/AuthService.java` - Logika Login Google & Firebase
-- `src/com/todoapp/persistence/FirebaseStorage.java` - Firestore REST Client
-- `src/com/todoapp/ui/LoginFrame.java` - Layar Login Modern
-- `src/com/todoapp/ui/FrameManajerTugas.java` - Dashboard Utama
-- `launch.ps1` - Skrip otomasi build & persiapan EXE
+## Panduan Pengembangan (Untuk Developer)
+### Prasyarat
+- Java 17 atau lebih baru.
+- WiX Toolset v3 (untuk membuat installer .exe).
 
-## Cara Menjalankan
+### Skrip Penting
+- `.\launch.ps1`: Membangun JAR dan menyiapkan konfigurasi Launch4j.
+- `.\SETUP-APLIKASI.ps1`: Membangun JAR sekaligus mendaftarkan shortcut ke Start Menu lokal.
+- `.\BUAT-INSTALLER.ps1`: Membuat file installer `.exe` profesional untuk dibagikan ke user lain.
 
-### Build dan Persiapan EXE Otomatis
-Gunakan skrip master untuk melakukan kompilasi JAR dan persiapan config Launch4j sekaligus:
-```powershell
-.\launch.ps1
-```
-
-### Menjalankan JAR Langsung
-```powershell
-java -jar ToDoApp.jar
-```
-
-## Setup Firebase (Wajib untuk Dev)
-Aplikasi membutuhkan API Key dan Client ID Google yang valid di `KonfigurasiFirebase.java`.
-1. Siapkan project di Firebase Console.
-2. Aktifkan Authentication (Google) dan Firestore.
-3. Ambil Web API Key dan Web OAuth Client ID.
-4. Masukkan ke `src/com/todoapp/service/KonfigurasiFirebase.java`.
-
-## Build EXE dengan Launch4j
-1. Jalankan `.\launch.ps1`
-2. Buka `launch4j-config.xml` di Launch4j.
-3. Klik Build wrapper (ikon gerigi).
-4. Hasil: `ToDoTask.exe`.
+---
+*Dikembangkan oleh Kelompok 7 PBO*

@@ -24,9 +24,12 @@ New-Item -ItemType Directory -Path bin | Out-Null
 
 # 2. Kompilasi
 Write-Host "Compiling Java sources..."
-# Compile dimulai dari Main.java, lalu javac akan menarik semua class terkait dari src/
-# termasuk hasil refactor seperti TemaAplikasi, KonfigurasiUi, PembantuUi, dan WaktuSapaan.
 javac -encoding UTF-8 -d bin -cp "lib/*" -sourcepath src src/com/todoapp/Main.java
+
+if ($currentDir -eq $null) { $currentDir = "." }
+if (Test-Path "icon.png") { Copy-Item "icon.png" -Destination "bin\icon.png" -Force }
+if (Test-Path "iconmini.png") { Copy-Item "iconmini.png" -Destination "bin\iconmini.png" -Force }
+if (Test-Path "iconmin.png") { Copy-Item "iconmin.png" -Destination "bin\iconmin.png" -Force }
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Compilation successful!" -ForegroundColor Green
