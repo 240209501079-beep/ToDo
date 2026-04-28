@@ -354,6 +354,14 @@ public class FrameManajerTugas extends JFrame {
         p.add(Box.createVerticalStrut(10));
         p.add(btnExit);
 
+        // Tambahkan label versi di paling bawah
+        p.add(Box.createVerticalStrut(20));
+        JLabel versionLabel = new JLabel("Versi 1.2.6.1");
+        versionLabel.setForeground(KonfigurasiUi.WARNA_ABU_TEKS);
+        versionLabel.setFont(new Font("Inter", Font.ITALIC, 11));
+        versionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.add(versionLabel);
+
         return p;
     }
 

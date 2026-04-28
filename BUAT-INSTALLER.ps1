@@ -1,4 +1,4 @@
-# --- MEGA INSTALLER BUILDER (WITH PROGRESS BAR) ---
+# --- MEGA INSTALLER BUILDER (CLEAN VERSION) ---
 $ErrorActionPreference = "Stop"
 Clear-Host
 Write-Host "===============================================" -ForegroundColor Cyan
@@ -25,7 +25,6 @@ function Show-Progress {
 }
 
 # --- LANGKAH 1/4 ---
-# 1. Pastikan JAR sudah yang terbaru (Hapus yang lama dulu)
 Write-Host "[1/4] Membersihkan paket lama & membangun JAR baru..." -ForegroundColor Yellow
 if (Test-Path "ToDoApp.jar") { Remove-Item "ToDoApp.jar" -Force }
 if (Test-Path "To-Do List.exe") { Remove-Item "To-Do List.exe" -Force }
@@ -40,33 +39,47 @@ if (Test-Path $distDir) { Remove-Item -Recurse -Force $distDir }
 New-Item -ItemType Directory -Path $distDir | Out-Null
 Copy-Item "ToDoApp.jar" -Destination $distDir
 if (Test-Path "lib") { Copy-Item -Recurse "lib" -Destination $distDir }
-# Salin juga ikon ke folder distribusi agar tersedia sebagai file fisik
-if (Test-Path "icon.png") { Copy-Item "icon.png" -Destination $distDir }
-if (Test-Path "iconmini.png") { Copy-Item "iconmini.png" -Destination $distDir }
-if (Test-Path "iconmin.png") { Copy-Item "iconmin.png" -Destination $distDir }
-# Sertakan file kredensial Firebase agar aplikasi bisa login setelah di-install
+if (Test-Path "icon.ico") { Copy-Item "icon.ico" -Destination $distDir }
 if (Test-Path "firebase.properties") { Copy-Item "firebase.properties" -Destination $distDir }
 
 # --- LANGKAH 3/4 ---
 Write-Host "[3/4] Menciptakan Setup.exe (Proses Utama)..." -ForegroundColor Yellow
 $outputDir = "HASIL-INSTALLER"
-if (Test-Path $outputDir) { Remove-Item -Recurse -Force $outputDir }
 
-# Simulasi progress awal sambil menunggu JPackage
+Stop-Process -Name "To-Do List*" -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
+
+if (Test-Path $outputDir) { 
+    Get-ChildItem $outputDir -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+} else {
+    New-Item -ItemType Directory -Path $outputDir | Out-Null
+}
+
+$appName = "To-Do List"
+$appVersion = "1.2.6.1"
+$installerName = "$appName-$appVersion.exe"
+
+$installerArgs = @(
+    "--name", $appName,
+    "--input", $distDir,
+    "--main-jar", "ToDoApp.jar",
+    "--main-class", "com.todoapp.Main",
+    "--type", "exe",
+    "--dest", $outputDir,
+    "--icon", "icon.ico",
+    "--vendor", "Kelompok 7 PBO",
+    "--app-version", $appVersion,
+    "--win-upgrade-uuid", "e1f82e5b-3a5e-4c7b-9d8f-123456789abc",
+    "--win-dir-chooser",
+    "--win-shortcut",
+    "--win-menu",
+    "--win-per-user-install",
+    "--win-menu-group", "To-Do List App",
+    "--verbose"
+)
+
 Write-Progress -Activity "Membungkus Aplikasi" -Status "Menjalankan JPackage..." -PercentComplete 60
-
-jpackage --name "To-Do List" `
-         --input $distDir `
-         --main-jar ToDoApp.jar `
-         --main-class com.todoapp.Main `
-         --type exe `
-         --dest $outputDir `
-         --icon "icon.ico" `
-         --win-dir-chooser `
-         --win-shortcut `
-         --win-menu `
-         --vendor "Kelompok 7 PBO" `
-         --app-version "1.2.6.1" | Out-Null
+jpackage @installerArgs
 Write-Progress -Activity "Membungkus Aplikasi" -Status "Selesai!" -PercentComplete 100 -Completed
 
 # --- LANGKAH 4/4 ---
@@ -75,8 +88,13 @@ Remove-Item -Recurse -Force $distDir
 Show-Progress 100 "Finalisasi"
 
 Write-Host "`n===============================================" -ForegroundColor Green
-Write-Host "   BERHASIL! SETUP INSTALLER TELAH SIAP" -ForegroundColor Green
-Write-Host "===============================================" -ForegroundColor Green
-Write-Host "Lokasi File: $outputDir\ToDoListInstaller-1.2.6.1.exe"
+$finalPath = Join-Path $outputDir $installerName
+if (Test-Path $finalPath) {
+    Write-Host "   BERHASIL! SETUP INSTALLER TELAH SIAP" -ForegroundColor Green
+    Write-Host "===============================================" -ForegroundColor Green
+    Write-Host "Lokasi File: $finalPath"
+} else {
+    Write-Host "   PERINGATAN: File installer tidak terbentuk!" -ForegroundColor Red
+}
 Write-Host "-----------------------------------------------"
 pause
